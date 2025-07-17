@@ -38,7 +38,6 @@ devtools::install_github("aylz83/inspectorORF")
 - GenomicRanges
 - ggh4x
 - ggplot2
-- ggplotify
 - ggrepel
 - grid
 - patchwork
