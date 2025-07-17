@@ -1,0 +1,893 @@
+.debug_inform <- function(obj, output_file = "debug_log.txt")
+{
+  output <- capture.output(print(obj))
+  msg <- paste(output, collapse = "\n")
+  log_entry <- paste0(format(Sys.time(), "%H:%M:%S"), ": ", msg, "\n")
+  cat(log_entry, file = output_file, append = TRUE)
+}
+
+.read_big_text <- function(x)
+{
+  f = file(x, "rb")
+  a = readChar(f, file.info(x)$size, useBytes = T)
+  a <- strsplit(a, "\n", fixed = T ,useBytes = T)[[1]]
+  close(f)
+  return(a)
+}
+
+.extract_attributes <- function(gtf_attributes, att_of_interest)
+{
+  att <- unlist(strsplit(gtf_attributes, " "))
+  gsub("\"|;","", att[which(att %in% att_of_interest) + 1])
+}
+
+.filter_gtf_df <- function(gtf_data, transcript_ids, attribute_column)
+{
+  transcript_filter <- paste(transcript_ids, collapse = "|")
+  gtf_data |> plyranges::filter(type == "exon" & str_detect(!!as.name(attribute_column), transcript_filter))
+}
+
+.select_gtf_df <- function(gtf_data)
+{
+  gtf_data |> plyranges::select(
+    gene_id,
+    gene_name,
+    chr,
+    start,
+    end,
+    strand,
+    transcript_id,
+    transcript_name,
+    transcript_type,
+    exon_number
+  )
+}
+
+.process_gtf_table <- function(gtf_data)
+{
+  gtf_data |> plyranges::mutate(
+    gene_id = sapply(attributes, .extract_attributes, "gene_id"),
+    gene_name = sapply(attributes, .extract_attributes, "gene_name"),
+    transcript_id = sapply(attributes, .extract_attributes, "transcript_id"),
+    transcript_name = sapply(attributes, .extract_attributes, "transcript_name"),
+    transcript_type = sapply(attributes, .extract_attributes, "transcript_type"),
+    exon_number = as.integer(sapply(attributes, .extract_attributes, "exon_number"))
+  )
+}
+
+# I've found importing GTF can be faster if i process this myself due to the
+# ability of fread to use multiple cores
+.import_gtf_hack <- function(gtf_file, transcripts_filter)
+{
+  data.table::fread(
+    gtf_file,
+    sep = "\t",
+    header = F,
+    col.names = c(
+      "chr",
+      "source",
+      "type",
+      "start",
+      "end",
+      "score",
+      "strand",
+      "phase",
+      "attributes"
+    )
+  ) |> .filter_gtf_df(transcripts_filter, "attributes") |>
+    .process_gtf_table() |>
+    .select_gtf_df() |>
+    as("GRanges")
+}
+
+.import_gtf <- function(gtf_file, track_ids, track_type = "gene_id")
+{
+  if (c("GRanges") %in% class(gtf_file) == T)
+  {
+    gtf_data <- gtf_file
+
+    gtf_data <- gtf_data |> .filter_gtf_df(track_ids, track_type)
+    gtf_data <- gtf_data |> .select_gtf_df()
+  }
+  else if (any(class(gtf_file) %in% c("data.frame", "data.table")) == T)
+  {
+    if ("attributes" %in% colnames(gtf_file))
+    {
+      filter_column <- "attributes"
+    }
+    else
+    {
+      filter_column <- track_type
+    }
+
+    gtf_data <- gtf_file |>
+      .filter_gtf_df(track_ids, filter_column)
+
+    if ("attributes" %in% colnames(gtf_file))
+    {
+      gtf_data <- gtf_data |> .process_gtf_table()
+    }
+
+    gtf_data <- gtf_data |> .select_gtf_df()
+  }
+  else
+  {
+    gtf_data <- .import_gtf_hack(gtf_file, track_ids)
+  }
+
+  gtf_data
+}
+
+.import_bed_hack <- function(bed_file)
+{
+  big_data <- .read_big_text(bed_file)
+  track_positions <- which(str_detect(big_data, pattern = "^track name="))
+  track_names <- str_remove(big_data[track_positions], "^track name=")
+
+  track_pairs <- sort(c(track_positions[-c(1)] - 1, (track_positions + 1), length(big_data)))
+
+  setNames(lapply(seq(from = 1, to = length(track_pairs / 2), by = 2), function(at)
+  {
+    data.table::fread(text = big_data[track_pairs[at]:track_pairs[at + 1]],
+          col.names = c("seqnames", "start", "end", "name", "score", "strand")) |>
+      dplyr::mutate(start = start + 1)# |>
+    # as("GRanges")
+  }), track_names) #|>
+  # as("GRangesList")
+}
+
+.import_coverage_bed <- function(bed_file, score_name)
+{
+  bed_data <- data.table::fread(
+    bed_file,
+    col.names = c("seqnames",
+                  "start",
+                  "end",
+                  "biotype",
+                  "gene_id",
+                  "strand",
+                  "position",
+                  "score")
+  ) |> dplyr::mutate(chr_pos = start + position) |>
+    dplyr::distinct(seqnames, chr_pos, strand, .keep_all = T) |>
+    dplyr::select(seqnames, chr_pos, strand, score) |>
+    dplyr::rename(!!as.name(score_name) := score,
+                  start = chr_pos)
+
+  # GRanges(bed_data$seqnames,
+  #         IRanges(bed_data$chr_pos, width = 1),
+  #         strand = bed_data$strand,
+  #         score = bed_data$score)
+}
+
+# from:
+# https://github.com/mdeber/BRGenomics/blob/dbab7113a1556c82053880cc0f106e97ac397f34/R/dataset_functions.R#L106
+# borrowed from BRGenomics (https://github.com/mdeber/BRGenomics) due to this package not installing via BiocManager anymore
+# A copy of the licence can be found in BRGenomics_LICENCE and
+#' @importFrom methods is
+#' @importFrom GenomicRanges width GPos mcols mcols<- isDisjoint findOverlaps
+#'   GRanges sort
+#' @importFrom S4Vectors from
+.brgenomics_makeGRangesBRG <- function(dataset.gr, ncores = getOption("mc.cores", 2L))
+{
+  if (is.list(dataset.gr) || is(dataset.gr, "GRangesList"))
+    return(parallel::mclapply(dataset.gr, .brgenomics_makeGRangesBRG, mc.cores = ncores))
+
+  if (!GenomicRanges::isDisjoint(dataset.gr))
+    stop("Input dataset.gr is not disjoint. See documentation")
+
+  # separate wide granges
+  is_wide <- GenomicRanges::width(dataset.gr) > 1L
+  gr_wide <- dataset.gr[is_wide]
+
+  # make width 1, reverse map, and add metadata
+  gp <- GenomicRanges::GPos(gr_wide)
+  hits <- GenomicRanges::findOverlaps(gr_wide, gp)
+  GenomicRanges::mcols(gp) <- GenomicRanges::mcols(gr_wide)[S4Vectors::from(hits), , drop = FALSE]
+
+  # combine and sort
+  GenomicRanges::sort(c(dataset.gr[!is_wide], GRanges(gp)))
+}
+
+.import_orfquant <- function(for_file, score_name, orfquant_results_type)
+{
+  loaded_name <- load(file = for_file)
+  get(loaded_name)[[orfquant_results_type]] |> .brgenomics_makeGRangesBRG() |>
+    as.data.frame() |>
+    dplyr::select(seqnames, start, strand, score) |>
+    dplyr::mutate(start = as.numeric(start),
+                  start = as.numeric(start)) |>
+    dplyr::rename(!!as.name(score_name) := score)
+}
+
+.obtain_sequences <- function(gtf_data, genome_file)
+{
+  gtf_data |> as.data.frame() |>
+    dplyr::mutate(sequence = rtracklayer::getSeq(genome_file,
+                                                 which = GenomicRanges::GRanges(paste0(seqnames, ":", start, "-", end, ":", strand))) |>
+                    Biostrings::RNAStringSet() |>
+                    as.character()) |>
+    dplyr::arrange(ifelse(strand == "-", dplyr::desc(start), xtfrm(start))) |>
+    dplyr::group_by(transcript_id) |>
+    dplyr::summarise(sequence = paste(sequence, collapse = "")) |>
+    tibble::deframe()
+}
+
+.get_tracks <- function(tracks, gtf_subset, read_names_count, framed_tracks)
+{
+  tracks <- plyranges::join_overlap_inner_within_directed(tracks, gtf_subset, maxgap = -1L, minoverlap = 0L) |>
+    as.data.frame() |> # faster to convert to and from dataframe than it is to use plyranges::group_by?!
+    dplyr::group_by(transcript_id) |>
+    dplyr::mutate(
+      exon_position = rep(1:(n() / read_names_count), each = read_names_count, length.out = n()),
+      og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = n())),
+      framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = n()), name))
+      # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
+      # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
+      # is_exon = T
+    ) |>
+    dplyr::ungroup() |>
+    as("GRanges")
+
+  split(tracks, tracks$transcript_id) |> as("GRangesList")
+}
+
+.cat_lists <- function(list1, list2)
+{
+  keys <- unique(c(names(list1), names(list2)))
+  setNames(mapply(c, list1[keys], list2[keys], SIMPLIFY = FALSE), keys)
+}
+
+.get_stop_from_start <- function(inspectorORF_tracks, transcript_filter, start_position, stop_codons)
+{
+  sequence <- inspectorORF_tracks@sequences[[transcript_filter]]
+
+  track_df <- as.data.frame(inspectorORF_tracks@tracks[[transcript_filter]])
+  track_df <- track_df[track_df$name == inspectorORF_tracks@framed_tracks[[1]], ]
+
+  # obtain the frame for the specified start position
+  orf_frame <- as.numeric(track_df$framing[start_position])
+
+  # filter tracks to remove everything before the start position of the ORF
+  remaining <- track_df[(start_position):nrow(track_df), ]
+  remaining <- remaining[as.numeric(remaining$framing) == orf_frame, ]
+
+  # loop through positions in-frame and look for stop codon
+  for (i in seq_len(nrow(remaining)))
+  {
+    codon_start <- remaining$exon_position[i]
+    codon <- substr(sequence, codon_start, codon_start + 2)
+
+    if (codon %in% stop_codons)
+    {
+      return(codon_start - 1)
+    }
+  }
+
+  # no stop codon found
+  return(NULL)
+}
+
+.main_plot <- function(
+  track_to_plot,
+  dataset_names,
+  condition_names,
+  plot_colours,
+  region_labels,
+  plot_labels,
+  codon_queries,
+  full_size_plots,
+  half_size_plots,
+  legend_position,
+  text_size
+)
+{
+  legend_labels <- sapply(names(plot_colours), function(nm)
+  {
+    dataset_label <- if (!is.null(dataset_names) && nm %in% names(dataset_names))
+    {
+      dataset_names[[nm]]
+    }
+    else
+    {
+      nm
+    }
+
+    label <- if (!is.null(condition_names) && nm %in% names(condition_names) && condition_names[[nm]] != "")
+    {
+      paste0(condition_names[[nm]], "\n", dataset_label)
+    }
+    else
+    {
+      dataset_label
+    }
+
+    if (nm %in% c("0", "1", "2"))
+    {
+      paste("Frame", nm)
+    }
+    else
+    {
+      label
+    }
+  }, USE.NAMES = TRUE)
+
+  # print(track_to_plot)
+  plot_result <- ggplot(
+    track_to_plot,
+    aes(y = score,
+        x = exon_position,
+        colour = framing,
+        fill = framing)
+  ) +
+    geom_bar(stat = "identity", na.rm = TRUE) +
+    geom_bar(
+      aes(x = exon_position,
+          y = p_sites,
+          colour = p_site_framing,
+          fill = p_site_framing),
+      stat = "identity",
+      na.rm = TRUE
+    ) +
+    scale_color_manual(
+      values = plot_colours,
+      aesthetics = c("fill", "colour"),
+      labels = legend_labels
+    ) +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
+    coord_cartesian(expand = FALSE) +
+    xlab(NULL) +
+    ylab(NULL) +
+    theme_minimal() +
+    theme(
+      legend.position = legend_position,
+      legend.title = element_blank(),
+      panel.spacing = unit(10, "pt"),
+      # panel.border = element_rect(colour = "black", fill = NA, linewidth = .5),
+      panel.background = element_blank(),
+      # axis.line = element_line(colour = "black"),
+      # axis.title.y = element_text(color = "grey30"),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      strip.background.y = element_blank(),
+      strip.placement = "left",
+      # strip.text = element_text(size = 12),
+      strip.text.y.left = element_text(angle = 0),
+      axis.ticks.length = unit(0, "points"),
+      text = element_text(size = text_size),
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
+    ) +
+    facet_grid(
+      name ~ track_group,
+      scales = "free",
+      space = "free",
+      labeller = labeller(track_group = region_labels, name = plot_labels),
+      switch = "y"
+    )
+
+  col_size <- c(1)
+  if (length(unique(track_to_plot$track_group)) == 2)
+  {
+    if (unique(track_to_plot$track_group)[1] == "5_UTR")
+    {
+      col_size <- c(0.3, 0.5)
+    }
+    else
+    {
+      col_size <- c(0.5, 0.3)
+    }
+  }
+  else if (length(unique(track_to_plot$track_group)) == 3)
+  {
+    col_size <- c(0.3, 0.5, 0.3)
+  }
+
+  row_sizes <- c(rep(0.5, full_size_plots), rep(0.15, half_size_plots))
+
+  if (!is.null(codon_queries))
+  {
+    # Compute minimum spacing between sorted exon positions
+    codon_positions <- sort(codon_queries$exon_position)
+    spacing <- diff(codon_positions)
+
+    # Count how many pairs are "close"
+    close_threshold <- 5
+    num_close_pairs <- sum(spacing < close_threshold)
+
+    # Scale panel height by number of close pairs
+    min_codon_row_size <- 0.1
+    max_codon_row_size <- 1
+    codon_row_size <- min(
+      max(
+        min_codon_row_size,
+        0.1 + 0.08 * num_close_pairs  # adjust scaling factor as needed
+      ),
+      max_codon_row_size
+    )
+
+    row_sizes <- c(row_sizes, codon_row_size)
+
+    plot_result <- plot_result +
+      ggrepel::geom_text_repel(
+        data = codon_queries,
+        aes(
+          x = exon_position,
+          label = codon
+        ),
+        y = 10,
+        max.overlaps = Inf,
+        colour = codon_queries$colour,
+        min.segment.length = 0,
+        nudge_y = -10,
+        # angle = 90,
+        segment.curvature = -0.1,
+        segment.ncp = 3,
+        segment.angle = 20,
+        size = 3,
+        # hjust = 0,
+        # segment.size = 0.2,
+        # force_pull = 0, # do not pull toward data points
+        # direction = "x",
+        bg.color = "grey30", # shadow color
+        bg.r = 0.005, # shadow radius
+        arrow = arrow(length = unit(0.015, "npc"))
+      ) +
+      geom_blank(data = codon_queries, aes(x = exon_position, y = 10)) +
+      ggh4x::facetted_pos_scales(
+        y = list(
+          name == "annotated_codons" ~ scale_y_continuous(
+            limits = c(0, 10),
+            breaks = NULL,
+            labels = NULL
+          )
+        )
+      )
+  }
+
+  plot_result + ggh4x::force_panelsizes(
+    rows = row_sizes,
+    cols = col_size
+  )
+}
+
+.codon_queries <- function(
+  codon_queries,
+  track_to_plot,
+  sequence,
+  start_position,
+  stop_position,
+  original_start,
+  original_stop,
+  no_orf,
+  plot_colours,
+  region_or_orf
+)
+{
+  if (is.null(codon_queries) | no_orf == T)
+  {
+    return(NULL)
+  }
+
+  annotations <- lapply(codon_queries, function(query)
+  {
+    if (query$annotate_start == T)
+    {
+      start_codon <- substr(sequence, start = original_start, stop = original_start + 2)
+      codons_to_plot <- data.frame(codon = start_codon, exon_position = original_start, name = "annotated_codons")
+    }
+    else
+    {
+      codons_to_plot <- sapply(1:3, function(frame)
+      {
+        codons <- sapply(seq(from = frame, to = nchar(sequence), by = 3),
+                         function(i) substr(sequence, i, i + 2))
+
+        found <- codons %in% query$annotation_codons
+        names(found) <- codons
+
+        (which(found) * 3) + frame - 3
+      }, simplify = F) |> unlist() |> sort()
+
+      codons_to_plot <- data.frame(
+        codon = names(codons_to_plot),
+        exon_position = codons_to_plot,
+        p_site_framing = (codons_to_plot - 1) %% 3,
+        name = "annotated_codons"
+      )
+
+      codons_to_plot <- codons_to_plot |>
+        dplyr::filter(exon_position >= start_position & exon_position <= stop_position)
+
+      if (query$in_frame == T)
+        codons_to_plot <- codons_to_plot |> dplyr::filter(p_site_framing == ((original_start - 1) %% 3))
+    }
+
+    if (!is.null(query$colour) && query$colour == "use_framing")
+    {
+      codons_to_plot$colour = plot_colours[as.character(codons_to_plot$p_site_framing)]
+    }
+    else if (!is.null(query$colour))
+    {
+      codons_to_plot$colour = query$colour
+    }
+    else
+    {
+      codons_to_plot$colour = "black"
+    }
+
+    codons_to_plot
+  }) |> bind_rows() |>
+    dplyr::arrange(exon_position) |>
+    dplyr::mutate(
+      framing = "no_framing",
+      name = factor(name, levels = c(levels(track_to_plot$name), "annotated_codons")),
+      track_group = if (is.null(original_start) & is.null(original_stop))
+        "Transcript" else
+          factor(
+            case_when(
+              !is.null(original_start) & exon_position < original_start ~ "5_UTR",
+              !is.null(original_start) & exon_position >= original_start & exon_position <= original_stop ~ region_or_orf,
+              !is.null(original_start) & exon_position > original_stop ~ "3_UTR"), levels = c("5_UTR", region_or_orf, "3_UTR")
+          )
+    ) |>
+    dplyr::distinct(exon_position, .keep_all = T)
+}
+
+.create_orf_list <- function(
+    transcript_id,
+    frame,
+    start_codon,
+    stop_codon,
+    orf_start,
+    orf_stop,
+    nt_length
+)
+{
+  list(
+    transcript_id = transcript_id,
+    frame = frame,
+    start_codon = start_codon,
+    stop_codon = stop_codon,
+    orf_start = orf_start,
+    orf_stop = orf_stop,
+    nt_length = nt_length
+  )
+}
+
+.framing_plots <- function(
+  track_to_plot,
+  plot_colours,
+  read_names,
+  plot_title,
+  text_size
+)
+{
+  track_to_plot <- track_to_plot |> drop_na()
+  read_names <- read_names[names(read_names) %in% track_to_plot$name]
+
+  read_names[names(read_names)] <- paste(read_names[names(read_names)], plot_title, "P-Sites")
+  # print(read_names)
+
+  track_to_plot |> drop_na() |>
+    # plots a bar chart consisting of p-site count for each possible frame
+    ggplot(aes(x = p_site_framing, y = p_sites, fill = p_site_framing, color = p_site_framing)) +
+    geom_bar(stat = "identity") +
+    labs(x = NULL, y = "P-Site Count") +
+    theme_minimal() +
+    # ggtitle("Framing") +
+    scale_color_manual(values = plot_colours, aesthetics = c("fill", "colour")) +
+    theme(
+      text = element_text(size = text_size),
+      legend.title = element_blank(),
+      legend.position = "none",
+      # panel.border = element_rect(colour = "black", fill = NA, linewidth = .5),
+      panel.background = element_blank(),
+      # axis.line = element_line(colour = "black"),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank()
+    ) +
+    scale_y_continuous(expand = c(0, 0)) +
+    facet_wrap(
+      ~ name,
+      ncol = 1,
+      scales = "free_y",
+      labeller = labeller(
+        name = function(labels) label_wrap_gen(width = 15)(read_names[labels])
+      )
+    )
+}
+
+.integer_breaks <- function(n = 50, ...)
+{
+  fxn <- function(x)
+  {
+    breaks <- floor(pretty(x, n, ...))
+    names(breaks) <- attr(breaks, "labels")
+    breaks
+  }
+
+  return(fxn)
+}
+
+# internal function to remove code duplication
+.check_valid_input <- function(
+  orf_object,
+  start_position
+)
+{
+  if (is.null(orf_object) && is.null(start_position))
+  {
+    stop("Error! No ORF filter supplied, please either supply a result from inspectorORF::get_orf(), or use a transcript_filter")
+  }
+
+  orf_object_columns <- c(
+    "transcript_id",
+    "frame",
+    "start_codon",
+    "stop_codon",
+    "orf_start",
+    "orf_stop",
+    "nt_length"
+  )
+
+  if (!is.null(orf_object) && sum(names(orf_object) %in% orf_object_columns) != 7)
+  {
+    stop("Error! the supplied orf details is invalid")
+  }
+}
+
+#' @importFrom ggh4x force_panelsizes
+#' @importFrom dplyr filter mutate coalesce select arrange rename
+#' @importFrom patchwork wrap_plots plot_layout plot_annotation
+.plot_helper <- function(
+  transcript_tracks,
+  orf_object,
+  transcript_filter,
+  start_position,
+  stop_position,
+  plot_region,
+  plot_colours,
+  scale_to_psites,
+  plot_transcript_summary,
+  codon_queries,
+  condition_names,
+  plot_read_pairs,
+  dataset_names,
+  one_plot,
+  legend_position,
+  text_size,
+  .tx_plot,
+  stop_codons = c("UAG", "UAA", "UGA")
+)
+{
+  # .check_valid_input(orf_object, start_position, plot_region)
+
+  # if an orf has been supplied by find_orf, or get_orf, use this information instead
+  # otherwise, requires transcript_filter, start position and (optionally), the stop position
+  if (!is.null(orf_object))
+  {
+    transcript_filter <- orf_object$transcript_id
+    start_position <- orf_object$orf_start
+    stop_position <- orf_object$orf_stop
+
+    if (is.null(plot_region))
+    {
+      plot_region = c(start_position, stop_position)
+    }
+
+    if (!(transcript_filter %in% transcript_tracks@transcript_ids))
+    {
+      abort(paste("Error!", transcript_filter, "not found within the BED data"))
+    }
+  }
+
+  orf_or_region <- ifelse(.tx_plot == T, "Region", "ORF")
+
+  # if orf details were not supplied and only a start codon was given, find the next stop position
+  if (!is.null(start_position) & is.null(stop_position))
+  {
+    stop_position <- .get_stop_from_start(transcript_tracks, transcript_filter, start_position, stop_codons)
+
+    if (.tx_plot == F && is.null(plot_region[2]))
+    {
+      plot_region[2] = stop_position
+    }
+  }
+
+  if (.tx_plot == F && (is.null(transcript_filter) || is.null(start_position) || is.null(stop_position)))
+  {
+    stop(paste0("Unable to obtain the transcript_id (",transcript_filter,
+                 "), start position (", start_position,
+                 "), or stop position (", stop_position, ")"))
+  }
+
+  original_start <- start_position
+  original_stop <- stop_position
+
+  sequence <- transcript_tracks@sequences[[transcript_filter]]
+  track_to_plot <- transcript_tracks@tracks[[transcript_filter]] |> as.data.frame()
+
+  start_position <- if (!is.na(plot_region[1]) && plot_region[1] == -1)
+  {
+    1
+  }
+  else if (!is.null(original_start) && !is.na(plot_region[1]) && original_start != plot_region[1])
+  {
+    original_start - plot_region[1]
+  }
+  else if (!is.na(plot_region[1]))
+  {
+    plot_region[1]
+  }
+  else
+  {
+    original_start
+  }
+
+  stop_position <- if (!is.na(plot_region[2]) && plot_region[2] == -1)
+  {
+    nrow(track_to_plot)
+  }
+  else if (!is.null(original_stop) && !is.na(plot_region[2]) && original_stop != plot_region[2])
+  {
+    original_stop + plot_region[2]
+  }
+  else if (!is.na(plot_region[2]))
+  {
+    plot_region[2]
+  }
+  else
+  {
+    original_stop
+  }
+
+  no_orf <- F
+  if (is.null(original_start) & is.null(original_stop))
+  {
+    plot_transcript_summary <- F
+    no_orf <- T
+    original_start <- start_position
+    original_stop <- stop_position
+  }
+
+  found_read_names <- track_to_plot$name |> unique()
+  read_names_count <- found_read_names |> length()
+
+  if (.tx_plot & no_orf)
+  {
+    track_to_plot <- track_to_plot |> dplyr::mutate(track_group = "Transcript")
+  }
+  else
+  {
+    track_to_plot <- track_to_plot |> dplyr::mutate(
+      track_group = factor(
+        case_when(
+          exon_position < original_start ~ "5_UTR",
+          exon_position >= original_start & exon_position <= original_stop ~ orf_or_region,
+          exon_position > original_stop ~ "3_UTR"), levels = c("5_UTR", orf_or_region, "3_UTR")
+      )
+    )
+  }
+
+  filtered_framed_tracks <- intersect(transcript_tracks@framed_tracks, names(plot_read_pairs))
+
+  if (!is.null(dataset_names))
+  {
+    track_to_plot <- track_to_plot |> dplyr::filter(name %in% c(filtered_framed_tracks, names(dataset_names)))
+  }
+
+  # track_to_plot <- track_to_plot |> arrange(seqnames, start, strand, exon_position, framing)
+
+  p_sites <- track_to_plot |> dplyr::select(transcript_id, seqnames, start, end, name, score, framing) |>
+    dplyr::filter(name %in% names(plot_read_pairs)) |>
+    dplyr::rename(p_sites = score,
+                  p_site_framing = framing) |>
+    dplyr::filter(!is.na(p_site_framing)) |>
+    dplyr::arrange(match(name, names(plot_read_pairs))) |>
+    dplyr::mutate(name = rep(plot_read_pairs, each = length(name) / length(plot_read_pairs)))
+
+  # print(track_to_plot)
+  track_to_plot <- track_to_plot |> dplyr::left_join(p_sites, by = c("transcript_id", "seqnames", "start", "end", "name")) |>
+    dplyr::filter(!(name %in% names(plot_read_pairs))) |>
+    dplyr::mutate(p_site_framing = dplyr::coalesce(p_site_framing, name))
+
+  if (any(!unique(track_to_plot$name) %in% names(plot_colours)) == T)
+  {
+    names_to_change <- unique(track_to_plot$name)[!(unique(track_to_plot$name) %in% names(plot_colours))]
+    track_to_plot[track_to_plot$name == names_to_change, "framing"] <- track_to_plot[track_to_plot$name == names_to_change, "og_framing"]
+  }
+
+  # print(track_to_plot)
+
+  region_labels <- c("5_UTR" = "5' UTR", orf_or_region = orf_or_region, "3_UTR" = "3' UTR")
+
+  plot_labels <- dataset_names[!(names(dataset_names) %in% filtered_framed_tracks)]
+  plot_labels[names(plot_labels)] <- ifelse(
+    names(plot_labels) %in% names(condition_names) & condition_names[names(plot_labels)] != "",
+    paste0(condition_names[names(plot_labels)], "\n", dataset_names[names(plot_labels)]),
+    paste0(dataset_names[names(plot_labels)])
+  )
+
+  plot_labels[plot_read_pairs] <- paste0(plot_labels[plot_read_pairs], "\n+", dataset_names[names(plot_read_pairs)])
+
+  track_to_plot <- track_to_plot |> dplyr::mutate(name = factor(name, levels = names(plot_labels)))
+
+  codon_queries <- .codon_queries(
+    codon_queries,
+    track_to_plot,
+    sequence,
+    start_position,
+    stop_position,
+    original_start,
+    original_stop,
+    no_orf,
+    plot_colours,
+    orf_or_region
+  )
+
+  if (!is.null(codon_queries))
+  {
+    plot_labels <- c(plot_labels, "annotated_codons" = "Labelled Codons")
+  }
+
+  # obtain the tracks to plot
+  to_plot <- track_to_plot |> dplyr::filter(exon_position >= start_position & exon_position <= stop_position)
+
+  if (scale_to_psites == T)
+  {
+    y_limit <- to_plot |> dplyr::filter(name %in% plot_read_pairs) |>
+      dplyr::group_by(name) |>
+      dplyr::summarise(max_p = max(p_sites |> na.omit()))
+
+    to_plot <- to_plot |>
+      dplyr::left_join(y_limit, by = "name") |>
+      dplyr::mutate(max_p = coalesce(max_p, score)) |>
+      (\(df) dplyr::mutate(df, score = pmin(df$max_p, df$score)))()
+  }
+
+  full_size_plots <- length(plot_read_pairs)
+  paired_datasets <- union(names(plot_read_pairs), unname(plot_read_pairs))
+  half_size_plots <- length(setdiff(names(dataset_names), paired_datasets))
+
+  plot_result <- .main_plot(
+    to_plot,
+    dataset_names,
+    condition_names,
+    plot_colours,
+    region_labels,
+    plot_labels,
+    codon_queries,
+    full_size_plots,
+    half_size_plots,
+    legend_position,
+    text_size
+  )
+
+  orf_tracks <- track_to_plot |> dplyr::filter(exon_position >= original_start & exon_position <= original_stop)
+
+  orf_frame_plot <- .framing_plots(orf_tracks, plot_colours, condition_names, ifelse(.tx_plot == T & no_orf, "Tx", orf_or_region), text_size)
+
+  number_of_plots <- 2
+  plot_list <- list(plot_result, orf_frame_plot)
+
+  if (plot_transcript_summary)
+  {
+    rest_of_transcript <- track_to_plot |> dplyr::filter(!(exon_position %in% orf_tracks$exon_position))
+    transcript_frame_plot <- .framing_plots(rest_of_transcript, plot_colours, condition_names, "Rest of", text_size)
+    number_of_plots <- 3
+    plot_list <- c(plot_list, list(transcript_frame_plot))
+  }
+
+  plot_figure_width <- c(3, rep(0.75, number_of_plots - 1))
+
+  if (one_plot)
+  {
+    patchwork_plot <- patchwork::wrap_plots(plot_list, nrow = 1, widths = plot_figure_width) +
+      patchwork::plot_layout(guides = "collect") +
+      patchwork::plot_annotation(theme = theme(legend.position = "bottom"))
+
+    return(patchwork_plot)
+  }
+
+  plot_list
+}

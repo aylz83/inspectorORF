@@ -1,0 +1,36 @@
+Package: inspectorORF
+Title: An R package to plot Ribo-Seq and RNA-Seq coverage from ORFquant and RiboTaper outputs
+Version: 1.0
+Authors@R: c(
+  person("Eilidh", "Ward", email = "bs18e3w@leeds.ac.uk", role = c("aut", "cre")),
+  person("Isabel", "Birds", role = "ctb"),
+  person("Mary", "O'Connell", role = "ctb"),
+  person("David", "Westhead", role = "ctb"),
+  person("Julie", "Aspden", role = "ctb"))
+Description: Utilises output from either ORFquant or RiboTaper, along with additional genomic or transcriptomic data, such as but not limited to RNA-Seq, long-read sequencing data, proteomics, Kozak scores etc to produce figures of transcripts or coding regions of interest with the ability to display multiple samples or conditions, codons of interest.
+License: use_mit_license()
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Suggests: 
+    testthat (>= 3.0.0),
+    DT,
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+Imports: 
+    bioseq,
+    Biostrings,
+    data.table,
+    GenomicRanges,
+    ggh4x,
+    ggplot2,
+    ggplotify,
+    ggrepel,
+    grid,
+    patchwork,
+    rtracklayer,
+    parallel,
+    dplyr,
+    methods
+VignetteBuilder: knitr, rmarkdown

@@ -1,0 +1,631 @@
+---
+title: "Summarising Ribo-Seq and RNA-Seq reads within open reading frames with inspectorORF"
+author: "Eilidh Ward, Isabel Birds, Mary O'Connell, David Westhead, and Julie L Aspden"
+date: "`r Sys.Date()`"
+output:
+  minidown::mini_document:
+    toc: true
+    toc_depth: 4
+    highlight: default
+    framework: bootstrap
+    css: wide.css
+
+vignette: >
+  %\VignetteIndexEntry{Summarising Ribo-Seq and RNA-Seq reads within open reading frames with inspectorORF}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+	collapse = TRUE,
+	comment = "#>",
+	eval = TRUE
+)
+```
+
+## Abstract
+
+Detecting translated open reading frames (ORFs) within Ribo-Seq data often requires evaluating the reads within your captured ORFs to determine if typical properties of translation, such as triplet periodicity are present. inspectorORF aims to simplify the task of plotting ORFs, with the following features:
+
+-   Plotting of ORFs consisting of RNA-Seq coverage and P-sites calculated from Ribo-Seq.
+-   Plotting the same ORFs for multiple conditions to evaluate the reads in a control vs treated condition, or multiple replicates.
+-   Including additional custom information within plots such as (but not limited to) mass-spec fragment hits, Kozak scores, TE etc.
+-   Plotting of 5'/3' UTRs.
+-   Annotating codons of interest such as non-canonical or up/downstream start codons.
+-   Easy extraction of both the nucleotide and amino-acid sequence from the ORFs
+
+## Standard workflow
+
+```{r imports, eval = T, include = F}
+detach_package <- function(pkg, character.only = FALSE)
+{
+	if (!character.only)
+	{
+		pkg <- deparse(substitute(pkg))
+	}
+
+	search_item <- paste("package", pkg, sep = ":")
+
+	while (search_item %in% search())
+	{
+    	detach(search_item, unload = TRUE, character.only = TRUE)
+	}
+}
+
+detach_package("inspectorORF", TRUE)
+
+library(inspectorORF)
+library(tidyverse)
+library(DT)
+```
+
+inspectorORF requires genomic sequences to be in 2bit format. Your genome FASTA of interest can be converted to with [UCSC's TwoBit tool](https://genome.ucsc.edu/goldenpath/help/twoBit.html) faToTwoBit as follows:
+
+```{bash eval = F}
+faToTwoBit gencode.v44.genome.fasta gencode.v44.genome.2bit
+```
+
+Additionally, coverage of the RNA-Seq data needs to be calculated. This can be performed with [bedtools](https://bedtools.readthedocs.io/en/latest/), using `bedtools coverage`:
+
+```{bash eval = F}
+bedtools coverage -abam sample_alignment.bam -b gencode.v44.annotation.gtf > control_rna_tracks.bed
+gzip control_rna_tracks.bed # optional, but recommended, especially if dealing with large genomes.
+```
+
+***A note if using RiboTaper data - RNA-Seq coverage is performed as part of the RiboTaper pipeline and therefore, the `bedtools coverage` step is not required.***
+
+### Merging RNA-Seq and P-Site coverage
+
+Before usage, reads from either [ORFquant](https://www.nature.com/articles/s41594-020-0450-4) and bedtools[bedtools](https://bedtools.readthedocs.io/en/latest/) or [RiboTaper](https://pubmed.ncbi.nlm.nih.gov/26657557/) need to be imported and processed.
+
+#### RiboTaper
+
+As [RiboTaper](https://pubmed.ncbi.nlm.nih.gov/26657557/) calculates both the RNA-Seq coverage and P-sites for you, simply using `inspectorORF::import_tracks_from_RiboTaper()` with one or more of the Psit_Ribo_Rna_Cent_tracks\_\* files found within the tracks_data folder of the RiboTaper results.
+
+**Please note, no example data is provided for running an example with RiboTaper data, and is simply provided to demonstrate how to create a tracks object from RiboTaper data. Additionally, `inspectorORF::import_tracks_from_RiboTaper` only supports one sample and therefore, multiple conditions, replicates, or additional data can not be supplied when importing from RiboTaper data. For plotting additional conditions or extra genomic data, the `inspectorORF::merge_tracks_with_ORFquant` function is required.**
+
+```{r ribotaper_tracks_creation, eval = F}
+# No such RiboTaper data is provided for running as an
+# example, all example data focuses on ORFquant since
+# this is the successor to RiboTaper.
+tracks <- inspectorORF::import_tracks_from_RiboTaper(
+	c("Psit_Ribo_Rna_Cent_tracks_ccds", 
+		"Psit_Ribo_Rna_Cent_tracks_nonccds")
+)
+```
+
+#### ORFquant
+
+Data from ORFquant can also be utilised. RNA-Seq coverage previously calculated with `bedtools coverage` and the P-sites calculated by ORFquant can be merged with the `inspectorORF::merge_tracks_with_ORFquant` function as follows, which will return a GRanges.
+
+```{r basic_orfquant_usage}
+tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
+	rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
+	orfquant_psites = system.file("example_data", "control_psites_for_ORFquant", package = "inspectorORF")
+)
+```
+
+If we evaluate the first 6 rows of the returned `genome_tracks` object, this shows the reads we have at each chromosome coordinate:
+
+```{r head_tracks}
+datatable(as.data.frame(tracks), options = list(pageLength = 10))
+```
+
+If you wish to add additional conditions, such as a treated condition, the `extra` and `extra_orfquant_psites` parameters can be utilised. These options expect a named list, where each element consists of the file name of the data to be added. Any names within the list can be used, as this information will be utilised to created an additional column name.
+
+For example, if we have a treated condition consisting of RNA-Seq reads and calculated P-sites, the following example would create create tracks for multiple conditions:
+
+```{r multi_condition_usage}
+tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
+	rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
+	orfquant_psites = system.file("example_data", "control_psites_for_ORFquant", package = "inspectorORF"),
+	extra = list(treated_rna_reads = system.file("example_data", "treated_rna_tracks.bed.gz", package = "inspectorORF")),
+	extra_orfquant_psites = list(treated_psites = system.file("example_data", "treated_psites_for_ORFquant", package = "inspectorORF"))
+)
+```
+
+```{r eval = F}
+# Optionally save the GRanges data into an RData file
+save(tracks, file = "tracks.RData")
+```
+
+Addtional track information from the treated RNA-Seq and ORFquant data can be seen when we evaluate the tracks with `head`:
+
+```{r head_multi_condition_usage}
+datatable(as.data.frame(tracks), options = list(pageLength = 10))
+```
+
+### Obtaining genes or transcripts of interest
+
+To plot reads from a transcript or ORF, reads associated with either genes(s) or transcript(s) of interest must be obtained. Gene level tracks requires additional steps for plotting but has the added benefit of being able to plot differing transcript variants of interest.
+
+The example data provided consists of reads from RNA-Seq and P-Sites calculated from Ribo-Seq data (processed with ORFquant) for the NTN4 gene from undifferentiated (control) and differentiated (ra-treated) SH-SY5Y cells. To obtain gene level tracks for the human gene netrin 4 (NTN4, gene id ENSG00000074527.13), save the data as a bed file for future importing and obtain transcript level tracks for the transcript variant ENST00000343702.9 for plotting can be performed as follows:
+
+```{r tx_tracks_from_genome_tracks, eval = F}
+# Obtain gene level tracks for the NTN4 gene - ENSG00000074527.13
+gene_tracks <- inspectorORF::get_gene_tracks(
+	tracks,
+	gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+	genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+	gene_ids = c("ENSG00000074527.13")
+)
+
+# Obtain tracks for specific transcript variants of the NTN4 gene.
+tx_tracks <- inspectorORF::gene_to_transcript_tracks(
+	gene_tracks,
+	transcript_filter = c("ENST00000343702.9") # multiple transcript ids supported
+)
+```
+
+```{r eval = F}
+# Save the gene level track information as a bed file for future use.
+inspectorORF::save_tracks(gene_tracks, "NTN4_gene_tracks.bed")
+```
+
+Alternatively, tracks for just the NTN4 transcript ENST00000343702.9 can be directly obtained and saved, requiring fewer steps but will need to be repeated if alternative transcripts of NTN4 wish to be plot in future.
+
+```{r tx_tracks_generation}
+tx_tracks <- inspectorORF::get_transcript_tracks(
+	tracks,
+	gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+	genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+	transcript_ids = c("ENST00000343702.9"), # multiple transcript ids supported
+	framed_tracks = c("p_sites", "treated_psites") # required when multiple ORFquant data us provided
+)
+```
+
+```{r eval = F}
+# Save the transcript level track information as a bed file for future use.
+inspectorORF::save_tracks(tx_tracks, "NTN4_ENST00000343702_tracks.bed")
+```
+
+### Plotting transcripts of interest
+
+A simple transcript plot can be made by calling `inspectorORF::transcript_plot` on our `tx_tracks` object, requesting the transcript of interest
+
+A plot of reads across a full transcript of interest can then be performed the `inspectorORF::transcript_plot`. The RNA-Seq coverage being peaks around the P-Site coverage rather than a more uniform coverage due to these reads being derived from polysome-associated RNA-Seq data.
+
+```{r first_tx_plot, fig.width = 8, fig.height = 4}
+inspectorORF::transcript_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9" # Requires 1 transcript at a time
+)
+```
+
+As can be seen in the above plot, although both RNA-Seq reads and P-Sites are found across the transcript, such reads are limited and fairly low, suggesting any coding sequences found within this transcript to not be translated. The original ORFquant results for this dataset also reflect this, with no coding sequence within ENST00000343702.9 being flagged as translated.
+
+The annotated coding sequence within ENST00000343702.9 to get a better understanding the P-Site reads we do have, to see if they are primarily within the coding sequence. This can be undertaken by highlighting a region of interest by specifying a `start_position` and `stop_position`.
+
+**Please note, no checks will be performed if start_position and stop_position are true start and stop codons, or if they're within the same frame. Plots will be given regardless.**
+
+```{r first_tx_region_plot, fig.width = 8, fig.height = 4}
+inspectorORF::transcript_plot(
+	tx_tracks,
+	start_position = 456,
+	stop_position = 2339,
+	transcript_filter = "ENST00000343702.9" # Requires 1 transcript at a time
+)
+```
+
+If RNA-Seq reads have a much higher depth to the Ribo-Seq/P-site information, such as with poorly translated lncRNAs, the RNA-Seq reads can be capped to the highest depth P-Site read by setting `scale_to_psites = TRUE`
+
+```{r scaled_tx_plot, fig.width = 8, fig.height = 4}
+inspectorORF::transcript_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9", # Requires 1 transcript at a time
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T
+)
+```
+
+Again, although reads are within the highlighted codsing sequence, such reads are low, making it unlikely that this coding sequence is truly translated.
+
+Evaluating P-sites and triplet periodicity of reads outside of the ORF compared to the triplet periodicity within the ORF ($\text{Full transcript P-sites} - \text{ORF P-sites}$) can be helpful to understand the likelihood the ORF is being translated. As such, if triplet periodicity is present within the ORF, with reads primarily consisting of the ORFs frame, but triplet periodicity is lacking within the remainder of the transcript, this can give some confidence in the ORF truly being translated.
+
+An additional triplet periodicity summary plot for the remainder of the transcript can be enabled with the `plot_transcript_summary = TRUE`:
+
+```{r summary_tx_plot, fig.width = 10, fig.height = 4}
+inspectorORF::transcript_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9", # Requires 1 transcript at a time
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	plot_transcript_summary = T
+)
+```
+
+### Plotting ORFs of interest
+
+#### Finding ORFs
+
+Helper functions are provided to search for ORFs and obtain the nucleotide sequence, amino acid sequence, and framing scores for each ORF frame.
+
+These are not strictly required, as transcript_filter, start_position and optionally stop_position can be specified manually within the plotting functions.
+
+If ORFs of interest aren't known, or you wish to identify ORFs (simply a start and stop, these functions do not consider reads to detect translated ORFs. Tools exist for such analysis, such as ORFquant) to evaluate reads, we use the `inspectorORF::find_orfs` function to search for ORFs in a given transcript.
+
+```{r find_orfs}
+# Find ORFs in a specific transcript
+orfs <- find_orfs(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9"
+)
+
+# Show the ORFs as a tibble, displaying start codon, stop codon, framing and reads present
+datatable(as.data.frame(orfs), options = list(pageLength = 10))
+```
+
+Additional filter options can also be supplied to `inspectorORF::find_orfs`, such as:
+
+-   frame_filter, to specify which frames to look in. Defaults to c(0, 1, 2)
+-   start_threshold_filter, to specify how far into a transcript sequence to start searching. Defaults to 13
+-   start_codon_filter, to specify the codon an ORF must start with. Defaults to c("AUG", "CUG", "GUG", "UUG", "AAG", "ACG")
+-   stop_codon_filter, to specify the codon an ORF must stop with. Defaults to c("UAG", "UGA", "UAA")
+-   orf_length_filter, to specify the minimum nt length an ORF must be. Defaults to 3
+
+#### ORF information
+
+Additional helper functions exist to obtain both nucleotide sequences and amino acid residues of an ORF.
+
+Nucleotide sequences are obtained with `inspectorORF::get_orf_nt_seq`, requiring the transcript of interest, and either an object from the list provided by `inspectorORF::find_orfs`, or a `start_position` parameter which will obtain the sequence up to the nearest in-frame stop codon. Optionally, a `stop_poisition` parameter can be supplied to override the detection of the nearest in-frame stop codon.
+
+```{r orf_nt_sequence}
+orf_nt_sequence <- inspectorORF::get_orf_nt_seq(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9", 
+	start_position = 456
+)
+
+print(orf_nt_sequence)
+```
+
+To obtain the amino acid residues of an ORF, the `inspectorORF::get_orf_aa_seq` function is utilised, accepting the same options as `inspectorORF::get_orf_nt_seq`.
+
+```{r orf_aa_sequence}
+orf_aa_sequence <- inspectorORF::get_orf_aa_seq(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456
+)
+
+print(orf_aa_sequence)
+```
+
+#### ORF plotting
+
+Plotting just an ORF an interest can be performed with `inspectorORF::orf_plot`. This accepts similar options to `inspectorORF::transcript_plot`
+
+##### Single conditions
+
+Plotting ORFs can either be undertaken by supplying an object ORF position identified by `inspectorORF::find_orfs`,
+
+```{r first_orf_plot, fig.width = 8, fig.height = 4}
+inspectorORF::orf_plot(
+	tx_tracks,
+	orf_object = inspectorORF::get_orf(orfs, start_position = 456)
+)
+```
+
+Or by supplying the transcript_id, start_position and stop_position positions directly.
+
+**Please note, no checks will be performed if orf_start and orf_stop are true start and stop codons, or if they're within the same frame. Plots will be given regardless.**
+
+```{r orf_plot_manual, fig.width = 8, fig.height = 4}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9", 
+	start_position = 456
+)
+```
+
+The rest of the transcript can also be plot by setting `plot_region = c(-1, -1)` which will plot these regions are 5'UTR and 3'UTR, essentially the same as `inspectorORF::transcript_plot` with a region highlighted.
+
+However, this can be particularly useful to plot a portion of the untranslated region upstream, downstream or both, of the ORF. this can be included in the plot with `plot_region` as specific sizes. These values are relative to the provided start and stop positions. E.G. `plot_region = c(500, NA)`, `plot_region = c(NA, 500)`, and `plot_region = c(500, NA)` will include 50nt upstream, 50nt downstream, and 50nt both upstream and downstream to the ORF requested.
+
+```{r orf_region_plot, fig.width = 8, fig.height = 4}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	plot_region = c(500, 500)
+)
+```
+
+##### Multiple conditions
+
+If the data was prepared with either multiple conditions or multiple replicates, inspectorORF supports plotting multiple figures of the same ORF for more than one condition. For example:
+
+```{r orf_plot_multiple_conditions_named, fig.width = 10, fig.height = 6}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	# Set two names for Control and Treated condition
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	# Declare names for the RNA and P-Site reads
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites"),
+	# State the colours for the additional treated_rna_reads
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725")
+)
+```
+
+This plot shows that coverage for both RNA-Seq and P-Sites are significantly higher and spread across the coding sequence of interested in our treated (differentiated) cells. Suggessting the coding sequence is translated.
+
+This reflects what ORFquant reports too, with this coding region being flagged as translated -
+
+| seqnames          | start | end  | width | strand |
+|-------------------|-------|------|-------|--------|
+| ENST00000343702.9 | 456   | 2339 | 1884  | \-     |
+
+### Plotting additional information
+
+#### Additional data
+
+Additional data can be supplied at either the generation of genome tracks with additional information such as reads from long-read sequencing, or at the transcript level of track extraction with the `additional_info` option of `inspectorORF::get_transcript_tracks` such as calculated Kozak scores or transcript level mapped proteomics data.
+
+```{r track_creation_additional_data}
+# Create the main tracks information consisting of data prepared from long-read sequencing.
+tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
+	rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
+	orfquant_psites = system.file("example_data", "control_psites_for_ORFquant", package = "inspectorORF"),
+	extra = list(treated_rna_reads = system.file("example_data", "treated_rna_tracks.bed.gz", package = "inspectorORF"),
+				# Control dRNA tracks not provided due to such reads being absent within the control cells.
+				treated_dRNA_reads = system.file("example_data", "treated_dRNA_tracks.bed.gz", package = "inspectorORF")),
+	extra_orfquant_psites = list(treated_psites = system.file("example_data", "treated_psites_for_ORFquant", package = "inspectorORF"))
+)
+```
+
+Supplying additional transcript level information requires the data to be in the form of a data frame (or something which can be cohersed into a data frame) with the following layout.
+
+| transcript_id | position | custom_column |
+|---------------|----------|---------------|
+| ENST1...      | 5        | 0.5           |
+| ENST1...      | 6        | 0.8           |
+| ENST2...      | 2        | 1.0           |
+
+Multiple custom columns can be supplied and the values within are required to be numeric, leading to an additional bar graph for each custom column found.
+
+For example, Kozak scores were previously calculated in-frame AUG codons for our transcript of interest (using a field labelled KSS) along with proteomics evidence (using a field labelled MS)
+
+```{r import_NTN4_tx_data}
+NTN4_KSS_and_MS <- read_csv(system.file("example_data", "NTN4_additional_tx_data.csv", package = "inspectorORF"))
+datatable(NTN4_KSS_and_MS, options = list(pageLength = 10))
+```
+
+Kozak scores can be calculated using [ORFik](https://www.bioconductor.org/packages/release/bioc/html/ORFik.html) or a webservice, for example <https://www.tispredictor.com/kss>. In the case of the proteomics data, we have set regions of a transcript with no proteomic evidence as zeros and regions of transcript where a peptide hit was present as values depending on how many overlapping hits are identified, which will result in solid blocks of colour for such regions.
+
+Finally, the transcript tracks for the additional genomic and transcriptomic level data can be obtained and plotted.
+
+```{r plot_additional_tx_level_data, fig.width = 10, fig.height = 8}
+# Obtain transcript tracks for ENST00000343702.9 along with our additional scores
+tx_tracks <- inspectorORF::get_transcript_tracks(
+	tracks,
+	gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+	genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+	transcript_ids = c("ENST00000343702.9"),
+	additional_info = NTN4_KSS_and_MS,
+	framed_tracks = c("p_sites", "treated_psites")
+)
+
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725")
+)
+```
+
+#### Annotating codons
+
+Codons can be labelled on the plot in order to evaluate alternative start codons that may be present within the transcript or ORF. This is particularly useful if there are upstream start codons which may act as an alternative initiation site, or for the analysis of near-cognate start codons (E.G CUG, or GUG).
+
+Therefore, additional options are supplied within inspectorORF to annotate the following:
+
+-   The ORFs start codon.
+-   Nearby in-frame and out of frame alternative start codons.
+-   Near-cognate start codons.
+-   Downstream stop codons which may be utilised in the case of stop codon readthrough.
+
+Annotating such codons is performed by supplying a list of queries with the `codon_queries` parameter of `inspectorORF::orf_plot`, specifying what codon(s) to plot, their framing, and colour.
+
+E.G, to label the ORFs start codon and in frame only canonical (AUG) start codons:
+
+```{r orf_plot_annotate_codons, fig.width = 10, fig.height = 8}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725"),
+	codon_queries = list(
+		inspectorORF::codon_query(annotate_start = T, colour = "black"),
+		inspectorORF::codon_query(annotation_codons = c("AUG"), in_frame = T, colour = "darkred")
+	)
+)
+```
+
+Additionally, codons can be coloured based on the frame the codon is found in, by setting "use_framing" as the colour option. Allowing out of frame codons can be useful here too, although in this case, this results in a fairly noisy plot:
+
+```{r orf_plot_annotate_framing_codons, fig.width = 10, fig.height = 8}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725"),
+	codon_queries = list(
+		inspectorORF::codon_query(annotation_codons = c("AUG"), colour = "use_framing")
+	)
+)
+```
+
+As can be seen in the plot, there are many AUG start codons within the ORF, consisting of various frames. Such codons can also be plotted within the UTRs, to evaluate potential upstream alternative initiation sites. Or we can evaluate in-frame codons, across the whole transcript:
+
+```{r orf_plot_annotate_framing_codons_full_tx, fig.width = 10, fig.height = 8}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	plot_region = c(-1, -1),
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725"),
+	codon_queries = list(
+		inspectorORF::codon_query(annotation_codons = c("AUG"), in_frame = T, colour = "use_framing")
+	)
+)
+```
+
+Two observations can be made from this plot. First of all, there are no upstream in-frame AUG start codons, suggesting initiation does occur at the start codon described for the coding seauence. Secondly, even if we evaluate alternative start codons, although two upstream in-frame CUG codons are present, there is zero evidence of these being utilised for initiation due to the lack of P-Site coverage downstream to these.
+
+For example, to include in-frame upstream AUG and the near cognate codon CUG:
+
+```{r orf_plot_annotate_utr_codons, fig.width = 10, fig.height = 8}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	# Add 5'UTR region from start of transcript
+	plot_region = c(-1, NA),
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725"),
+	codon_queries = list(
+		inspectorORF::codon_query(annotate_start = T, colour = "black"),
+		inspectorORF::codon_query(annotation_codons = c("AUG"), in_frame = T, colour = "darkred"),
+		inspectorORF::codon_query(annotation_codons = c("CUG"), in_frame = T, colour = "darkgreen")
+	)
+)
+```
+
+### Session Info
+
+```{r session_info}
+sessionInfo()
+```
