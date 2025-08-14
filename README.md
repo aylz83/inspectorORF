@@ -46,6 +46,12 @@ devtools::install_github("aylz83/inspectorORF")
 - dplyr
 - methods
 
+## Example Data
+
+- Ribo-Seq and RNA-Seq data was processed from GEO accession [GSE16214](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE16214), aligned to Gencode V44 and subset for the NTN4 gene.
+- Kozak scores calculated with ORFik.
+- Proteomic and long-read data simulated for vignette example.
+
 ## Quick Start
 
 ```r
@@ -74,7 +80,7 @@ transcript_plot(
 # or, create an ORF plot from the coding region starting at transcript position 456
 orf_plot(
 	tx_tracks,
-	transcript_filter = "ENST00000343702.9", 
+	transcript_filter = "ENST00000343702.9",
 	start_position = 456
 )
 ```

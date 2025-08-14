@@ -99,6 +99,9 @@ tracks <- inspectorORF::import_tracks_from_RiboTaper(
 
 Data from ORFquant can also be utilised. RNA-Seq coverage previously calculated with `bedtools coverage` and the P-sites calculated by ORFquant can be merged with the `inspectorORF::merge_tracks_with_ORFquant` function as follows, which will return a GRanges.
 
+All example data has been processed from GEO accession [GSE16214](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE16214), aligned to Gencode V44 and subset for the NTN4 gene.
+
+
 ```{r basic_orfquant_usage}
 tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
 	rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
@@ -552,7 +555,9 @@ inspectorORF::orf_plot(
 	start_position = 456,
 	stop_position = 2339,
 	scale_to_psites = T,
+	plot_transcript_summary = T,
 	plot_region = c(-1, -1),
+	text_size = 14,
 	condition_names = c("rna_reads" = "Control",
 						"treated_rna_reads" = "Treated"),
 	plot_read_pairs = c("p_sites" = "rna_reads",
@@ -563,18 +568,20 @@ inspectorORF::orf_plot(
 					"p_sites" = "P-Sites",
 					"treated_rna_reads" = "RNA-Seq Reads",
 					"treated_psites" = "P-Sites",
-					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
-					"KSS" = "AUG Kozak scores",
+					"treated_dRNA_reads" = "Treated\ndRNA-Seq\nReads",
+					"KSS" = "AUG Kozak\nscores",
 					"MS" = "Proteomics"),
 	# State the colours for the additional data
-	plot_colours = c("rna_reads" = "grey60",
-					"treated_rna_reads" = "grey60",
-					"treated_dRNA_reads" = "orange",
-					"KSS" = "hotpink4",
-					"MS" = "black",
-					"0" = "#440854",
-					"1" = "#23A884",
-					"2" = "#FEE725"),
+	plot_colours = c(
+		"rna_reads" = "grey70",
+		"treated_rna_reads" = "grey60",
+		"treated_dRNA_reads" = "#999900",
+		"KSS" = "#008080",
+		"MS" = "black",
+		"0" = "#B12A90",
+		"1" = "#0072B2",
+		"2" = "#E66100"
+	),
 	codon_queries = list(
 		inspectorORF::codon_query(annotation_codons = c("AUG"), in_frame = T, colour = "use_framing")
 	)

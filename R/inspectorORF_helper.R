@@ -336,7 +336,7 @@
     ) +
     scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
     coord_cartesian(expand = FALSE) +
-    xlab(NULL) +
+    xlab("Position") +
     ylab(NULL) +
     theme_minimal() +
     theme(
@@ -558,42 +558,39 @@
   track_to_plot,
   plot_colours,
   read_names,
-  plot_title,
   text_size
 )
 {
   track_to_plot <- track_to_plot |> drop_na()
   read_names <- read_names[names(read_names) %in% track_to_plot$name]
 
-  read_names[names(read_names)] <- paste(read_names[names(read_names)], plot_title, "P-Sites")
-  # print(read_names)
+  track_to_plot$region <- factor(track_to_plot$region, levels = c("ORF", "Region", "Transcript", "Rest of Transcript"))
 
-  track_to_plot |> drop_na() |>
-    # plots a bar chart consisting of p-site count for each possible frame
-    ggplot(aes(x = p_site_framing, y = p_sites, fill = p_site_framing, color = p_site_framing)) +
-    geom_bar(stat = "identity") +
-    labs(x = NULL, y = "P-Site Count") +
-    theme_minimal() +
-    # ggtitle("Framing") +
+  read_names[names(read_names)] <- paste(read_names[names(read_names)], "P-Sites")
+
+  ggplot(track_to_plot, aes(x = p_site_framing, y = p_sites, fill = p_site_framing)) +
+  geom_bar(stat = "identity") +
     scale_color_manual(values = plot_colours, aesthetics = c("fill", "colour")) +
+    labs(x = NULL, y = NULL) +
+    theme_minimal() +
     theme(
       text = element_text(size = text_size),
       legend.title = element_blank(),
       legend.position = "none",
-      # panel.border = element_rect(colour = "black", fill = NA, linewidth = .5),
+      strip.placement = "left",
       panel.background = element_blank(),
-      # axis.line = element_line(colour = "black"),
       panel.grid.major.x = element_blank(),
       panel.grid.minor.x = element_blank()
     ) +
     scale_y_continuous(expand = c(0, 0)) +
-    facet_wrap(
-      ~ name,
-      ncol = 1,
-      scales = "free_y",
+    facet_grid(
+      name ~ region,
+      # scale = "free_y",
       labeller = labeller(
-        name = function(labels) label_wrap_gen(width = 15)(read_names[labels])
-      )
+        name = function(labels) label_wrap_gen(width = 15)(read_names[labels]),
+        region = label_wrap_gen(width = 15)
+      ),
+      switch = "y"
     )
 }
 
@@ -827,7 +824,7 @@
 
   if (!is.null(codon_queries))
   {
-    plot_labels <- c(plot_labels, "annotated_codons" = "Labelled Codons")
+    plot_labels <- c(plot_labels, "annotated_codons" = "Labelled\nCodons")
   }
 
   # obtain the tracks to plot
@@ -863,22 +860,33 @@
     text_size
   )
 
-  orf_tracks <- track_to_plot |> dplyr::filter(exon_position >= original_start & exon_position <= original_stop)
-
-  orf_frame_plot <- .framing_plots(orf_tracks, plot_colours, condition_names, ifelse(.tx_plot == T & no_orf, "Tx", orf_or_region), text_size)
-
-  number_of_plots <- 2
-  plot_list <- list(plot_result, orf_frame_plot)
+  orf_tracks <- track_to_plot |>
+    dplyr::filter(exon_position >= original_start & exon_position <= original_stop) |>
+    dplyr::mutate(region = ifelse(.tx_plot == TRUE & no_orf, "Transcript", orf_or_region))
 
   if (plot_transcript_summary)
   {
-    rest_of_transcript <- track_to_plot |> dplyr::filter(!(exon_position %in% orf_tracks$exon_position))
-    transcript_frame_plot <- .framing_plots(rest_of_transcript, plot_colours, condition_names, "Rest of", text_size)
-    number_of_plots <- 3
-    plot_list <- c(plot_list, list(transcript_frame_plot))
+    rest_of_transcript <- track_to_plot |>
+      dplyr::filter(!(exon_position %in% orf_tracks$exon_position)) |>
+      dplyr::mutate(region = "Rest of Transcript")
+
+    combined_tracks <- bind_rows(orf_tracks, rest_of_transcript)
+  }
+  else
+  {
+    combined_tracks <- orf_tracks
   }
 
-  plot_figure_width <- c(3, rep(0.75, number_of_plots - 1))
+  orf_frame_plot <- .framing_plots(
+    combined_tracks,
+    plot_colours,
+    condition_names,
+    text_size
+  )
+
+  plot_list <- list(plot_result, orf_frame_plot)
+
+  plot_figure_width <- c(3, 0.75)
 
   if (one_plot)
   {
