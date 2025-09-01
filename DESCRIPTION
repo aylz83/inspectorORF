@@ -3,7 +3,7 @@ Title: An R package to plot Ribo-Seq and RNA-Seq coverage from ORFquant and Ribo
 Version: 1.0
 Authors@R: c(
   person("Eilidh", "Ward", email = "bs18e3w@leeds.ac.uk", role = c("aut", "cre")),
-  person("Isabel", "Birds", role = c("aut", "cre")))
+  person("Isabel", "Birds", role = c("aut")))
 Description: Utilises output from either ORFquant or RiboTaper, along with additional genomic or transcriptomic data, such as but not limited to RNA-Seq, long-read sequencing data, proteomics, Kozak scores etc to produce figures of transcripts or coding regions of interest with the ability to display multiple samples or conditions, codons of interest.
 License: use_mit_license()
 Encoding: UTF-8
@@ -20,6 +20,7 @@ Imports:
     Biostrings,
     data.table,
     GenomicRanges,
+    IRanges,
     ggh4x,
     ggplot2,
     ggrepel,

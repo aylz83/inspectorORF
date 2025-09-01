@@ -2,3 +2,5 @@
 ^\.Rproj\.user$
 vignettes/*.html
 
+^doc$
+^Meta$

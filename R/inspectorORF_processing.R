@@ -181,6 +181,7 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
 #' @importFrom tidyr pivot_longer
 #' @importFrom dplyr select arrange
 #' @importFrom GenomicRanges split
+#' @importClassesFrom IRanges IRanges
 #' @importClassesFrom GenomicRanges GRanges GRangesList
 #' @importClassesFrom rtracklayer UCSCData
 get_gene_tracks <- function(tracks,
