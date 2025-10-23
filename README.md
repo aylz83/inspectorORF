@@ -24,7 +24,16 @@ Detecting translated ORFs within Ribo-Seq data often requires evaluating typical
 
 ##  Installation
 
-Install from GitHub:
+Install Bioconductor dependencies -
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install(c("plyranges", "bioseq", "Biostrings", "GenomicRanges", "rtracklayer")
+```
+
+Install inspectorORF from GitHub:
 
 ```r
 # install.packages("devtools")
@@ -33,6 +42,7 @@ devtools::install_github("aylz83/inspectorORF")
 
 ##  Dependencies
 - bioseq
+- plyranges
 - Biostrings
 - data.table
 - GenomicRanges

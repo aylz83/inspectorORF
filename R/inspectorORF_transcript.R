@@ -117,7 +117,7 @@ get_transcripts_for_gene <- function(gene_tracks, gene_id_filter)
 #' tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
 #' @importFrom dplyr bind_rows distinct
 #' @importClassesFrom rtracklayer TwoBitFile
-#' @importClassesFrom GenomicRanges GRanges
+#' @importFrom stringr str_detect
 import_transcript_bed <- function(bed_file,
                                   gtf_file,
                                   genome_file,
@@ -157,6 +157,7 @@ import_transcript_bed <- function(bed_file,
 #' @examples
 #' gene_tracks <- inspectorORF::import_gene_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
 #' tx_tracks <- inspectorORF::gene_to_transcript_tracks(gene_tracks, transcript_id_filter = c("ENST00000361764.9", "ENST00000643391.1"))
+#' @importFrom plyranges filter
 #' @importFrom plyranges filter
 gene_to_transcript_tracks <- function(gene_tracks,
                                       transcript_id_filter)

@@ -24,7 +24,7 @@
 .filter_gtf_df <- function(gtf_data, transcript_ids, attribute_column)
 {
   transcript_filter <- paste(transcript_ids, collapse = "|")
-  gtf_data |> plyranges::filter(type == "exon" & str_detect(!!as.name(attribute_column), transcript_filter))
+  gtf_data |> plyranges::filter(type == "exon" & grepl(transcript_filter, !!as.name(attribute_column)))
 }
 
 .select_gtf_df <- function(gtf_data)
@@ -121,8 +121,8 @@
 .import_bed_hack <- function(bed_file)
 {
   big_data <- .read_big_text(bed_file)
-  track_positions <- which(str_detect(big_data, pattern = "^track name="))
-  track_names <- str_remove(big_data[track_positions], "^track name=")
+  track_positions <- which(grepl("^track name=", big_data))
+  track_names <- sub("^track name=", "", big_data[track_positions])
 
   track_pairs <- sort(c(track_positions[-c(1)] - 1, (track_positions + 1), length(big_data)))
 

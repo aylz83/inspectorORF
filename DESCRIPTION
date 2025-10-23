@@ -1,6 +1,6 @@
 Package: inspectorORF
 Title: An R package to plot Ribo-Seq and RNA-Seq coverage from ORFquant and RiboTaper outputs
-Version: 1.0
+Version: 1.0.1
 Authors@R: c(
   person("Eilidh", "Ward", email = "bs18e3w@leeds.ac.uk", role = c("aut", "cre")),
   person("Isabel", "Birds", role = c("aut")))
@@ -15,8 +15,9 @@ Suggests:
     knitr,
     rmarkdown
 Config/testthat/edition: 3
-Imports: 
+Imports:
     bioseq,
+    plyranges,
     Biostrings,
     data.table,
     GenomicRanges,
@@ -30,4 +31,10 @@ Imports:
     parallel,
     dplyr,
     methods
+Config/BiocViews:
+    GenomicRanges,
+    plyranges,
+    bioseq,
+    IRanges,
+    Biostrings
 VignetteBuilder: knitr, rmarkdown

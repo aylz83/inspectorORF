@@ -227,52 +227,52 @@ find_orfs <- function(transcript_tracks,
 }
 
 
-#' Import reads from a bed file where the tracks are ORF level information
-#'
-#' @param bed_file The bed file containing the ORF tracks, each track must contain the trackline of transcript_id_start_stop, e.g ENST00000361764.9_236_400
-#' @param gtf_file The path to the gtf file
-#' @param genome_file The path to the genome fasta or 2bit file
-#' @param framed_tracks The track line consisting of the P-site reads (defaults to p_sites)
-#'
-#' @return An inspectorORF_txtracks object consisting of the relevant reads
-#' @export
-#'
-#' @examples
-#' tracks <- inspectorORF::import_orf_tracks("test.bed", "gencode.v44.nnotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-#' @importFrom dplyr bind_rows distinct
-#' @importFrom stringr str_remove
-#' @importClassesFrom GenomicRanges GRanges
-import_orf_tracks <- function(bed_file,
-                              gtf_file,
-                              genome_file,
-                              framed_tracks = c("p_sites"))
-{
-  bed_tracks <- .import_bed_hack(bed_file)
-
-  names(bed_tracks) <- stringr::str_remove(names(bed_tracks), pattern = "\\_*")
-
-  track_ids <- names(bed_tracks)
-
-  bed_tracks <- do.call(rbind, bed_tracks) |>
-    unique() |>
-    as("GRanges")
-
-  gtf_data <- .import_gtf(gtf_file, track_ids, track_type = "transcript_id")
-
-  transcript_ids <- gtf_data$transcript_id |> unique()
-
-  sequences <- .obtain_sequences(gtf_data, TwoBitFile(genome_file))
-
-  read_names_count <- bed_tracks$name |> unique() |> length()
-
-  tracks <- .get_tracks(bed_tracks, gtf_data, read_names_count, framed_tracks)
-
-  new("inspectorORF_txtracks",
-      transcript_ids = transcript_ids,
-      tracks = tracks,
-      sequences = sequences,
-      framed_tracks = framed_tracks)
-}
+# Import reads from a bed file where the tracks are ORF level information
+#
+# @param bed_file The bed file containing the ORF tracks, each track must contain the trackline of transcript_id_start_stop, e.g ENST00000361764.9_236_400
+# @param gtf_file The path to the gtf file
+# @param genome_file The path to the genome fasta or 2bit file
+# @param framed_tracks The track line consisting of the P-site reads (defaults to p_sites)
+#
+# @return An inspectorORF_txtracks object consisting of the relevant reads
+# @export
+#
+# @examples
+# tracks <- inspectorORF::import_orf_tracks("test.bed", "gencode.v44.nnotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
+# @importFrom dplyr bind_rows distinct
+# @importFrom stringr str_remove
+# @importClassesFrom GenomicRanges GRanges
+# import_orf_tracks <- function(bed_file,
+#                               gtf_file,
+#                               genome_file,
+#                               framed_tracks = c("p_sites"))
+# {
+#   bed_tracks <- .import_bed_hack(bed_file)
+#
+#   names(bed_tracks) <- stringr::str_remove(names(bed_tracks), pattern = "\\_*")
+#
+#   track_ids <- names(bed_tracks)
+#
+#   bed_tracks <- do.call(rbind, bed_tracks) |>
+#     unique() |>
+#     as("GRanges")
+#
+#   gtf_data <- .import_gtf(gtf_file, track_ids, track_type = "transcript_id")
+#
+#   transcript_ids <- gtf_data$transcript_id |> unique()
+#
+#   sequences <- .obtain_sequences(gtf_data, TwoBitFile(genome_file))
+#
+#   read_names_count <- bed_tracks$name |> unique() |> length()
+#
+#   tracks <- .get_tracks(bed_tracks, gtf_data, read_names_count, framed_tracks)
+#
+#   new("inspectorORF_txtracks",
+#       transcript_ids = transcript_ids,
+#       tracks = tracks,
+#       sequences = sequences,
+#       framed_tracks = framed_tracks)
+# }
 
 #' Used to annotate codons on the ORF plots.
 #'
