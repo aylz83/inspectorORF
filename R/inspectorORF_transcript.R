@@ -160,10 +160,10 @@ import_transcript_bed <- function(bed_file,
 #' @importFrom plyranges filter
 #' @importFrom plyranges filter
 gene_to_transcript_tracks <- function(gene_tracks,
-                                      transcript_id_filter)
+									  transcript_filter)
 {
   gtf_subset <- gene_tracks@gtf |>
-    plyranges::filter(transcript_id %in% transcript_id_filter)
+    plyranges::filter(transcript_id %in% transcript_filter)
 
   transcript_ids <- gtf_subset$transcript_id |> unique()
 

@@ -108,6 +108,16 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
     tracks <- c(tracks, extra)
   }
 
+  .check_files_exist(unlist(tracks), "RNA track")
+
+  psite_tracks <- list(p_sites = orfquant_psites)
+  if (!is.null(extra_orfquant_psites))
+  {
+    psite_tracks <- c(psite_tracks, extra_orfquant_psites)
+  }
+
+  .check_files_exist(unlist(psite_tracks), "ORFquant P-site track")
+
   print("Reading in RNA-Seq data")
 
   print(paste("Importing data for", names(tracks)[[1]]))
@@ -125,13 +135,6 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
   # # load each tracks file as a list of GRanges
   # tracks <- lapply(names(tracks), \(x) .import_coverage_bed(tracks[[x]], x)) |>
   #   setNames(track_names)
-
-  psite_tracks <- list(p_sites = orfquant_psites)
-
-  if (!is.null(extra_orfquant_psites))
-  {
-    psite_tracks <- c(psite_tracks, extra_orfquant_psites)
-  }
 
   print("Reading in ORFquant P-Site data")
 

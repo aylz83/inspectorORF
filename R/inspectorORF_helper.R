@@ -1,3 +1,14 @@
+.check_files_exist <- function(files, label)
+  {
+    missing_files <- files[!file.exists(files)]
+    if (length(missing_files) > 0)
+    {
+      stop(paste0("The following ", label, " files do not exist:\n",
+        paste(missing_files, collapse = "\n")
+      ))
+    }
+}
+
 .debug_inform <- function(obj, output_file = "debug_log.txt")
 {
   output <- capture.output(print(obj))
