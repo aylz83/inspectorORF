@@ -149,14 +149,14 @@ import_transcript_bed <- function(bed_file,
 #' Extracts reads from gene level data relevant to a transcript of interest
 #'
 #' @param gene_tracks The gene tracks object obtained from inspectorORF::import_gene_tracks
-#' @param transcript_id_filter The transcript ids of interest
+#' @param transcript_filter The transcript ids of interest
 #'
 #' @return A transcript tracks object
 #' @export
 #'
 #' @examples
 #' gene_tracks <- inspectorORF::import_gene_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-#' tx_tracks <- inspectorORF::gene_to_transcript_tracks(gene_tracks, transcript_id_filter = c("ENST00000361764.9", "ENST00000643391.1"))
+#' tx_tracks <- inspectorORF::gene_to_transcript_tracks(gene_tracks, transcript_filter = c("ENST00000361764.9", "ENST00000643391.1"))
 #' @importFrom plyranges filter
 #' @importFrom plyranges filter
 gene_to_transcript_tracks <- function(gene_tracks,
