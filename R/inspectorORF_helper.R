@@ -32,12 +32,14 @@
   gsub("\"|;","", att[which(att %in% att_of_interest) + 1])
 }
 
+#' @importFrom plyranges filter
 .filter_gtf_df <- function(gtf_data, transcript_ids, attribute_column)
 {
   transcript_filter <- paste(transcript_ids, collapse = "|")
   gtf_data |> plyranges::filter(type == "exon" & grepl(transcript_filter, !!as.name(attribute_column)))
 }
 
+#' @importFrom plyranges select
 .select_gtf_df <- function(gtf_data)
 {
   gtf_data |> plyranges::select(
@@ -54,6 +56,7 @@
   )
 }
 
+#' @importFrom plyranges mutate
 .process_gtf_table <- function(gtf_data)
 {
   gtf_data |> plyranges::mutate(
@@ -68,6 +71,8 @@
 
 # I've found importing GTF can be faster if i process this myself due to the
 # ability of fread to use multiple cores
+#' @importFrom data.table fread
+#' @importClassFrom GenomicRanges GRanges
 .import_gtf_hack <- function(gtf_file, transcripts_filter)
 {
   data.table::fread(
@@ -91,6 +96,7 @@
     as("GRanges")
 }
 
+#' @importClassFrom GenomicRanges GRanges
 .import_gtf <- function(gtf_file, track_ids, track_type = "gene_id")
 {
   if (c("GRanges") %in% class(gtf_file) == T)
@@ -129,6 +135,7 @@
   gtf_data
 }
 
+#' @importFrom data.table fread
 .import_bed_hack <- function(bed_file)
 {
   big_data <- .read_big_text(bed_file)
@@ -143,10 +150,11 @@
           col.names = c("seqnames", "start", "end", "name", "score", "strand")) |>
       dplyr::mutate(start = start + 1)# |>
     # as("GRanges")
-  }), track_names) #|>
+  }), track_names) # |>
   # as("GRangesList")
 }
 
+#' @importFrom dplyr mutate distinct select rename
 .import_coverage_bed <- function(bed_file, score_name)
 {
   bed_data <- data.table::fread(
@@ -200,6 +208,7 @@
   GenomicRanges::sort(c(dataset.gr[!is_wide], GRanges(gp)))
 }
 
+#' @importFrom dplyr mutate select rename
 .import_orfquant <- function(for_file, score_name, orfquant_results_type)
 {
   loaded_name <- load(file = for_file)
@@ -211,6 +220,8 @@
     dplyr::rename(!!as.name(score_name) := score)
 }
 
+#' @importFrom dplyr mutate arrange group_by summarise
+#' @importFrom tibble deframe
 .obtain_sequences <- function(gtf_data, genome_file)
 {
   gtf_data |> as.data.frame() |>
@@ -224,6 +235,8 @@
     tibble::deframe()
 }
 
+#' @importFrom dplyr group_by mutate ungroup
+#' @importClassFrom GenomicRanges GRanges
 .get_tracks <- function(tracks, gtf_subset, read_names_count, framed_tracks)
 {
   tracks <- plyranges::join_overlap_inner_within_directed(tracks, gtf_subset, maxgap = -1L, minoverlap = 0L) |>
@@ -279,6 +292,9 @@
   return(NULL)
 }
 
+#' @importFrom ggplot2 ggplot geom_bar aes scale_color_manual coord_cartesian xlab ylab theme_minimal theme facet_grid geom_blank
+#' @importFrom ggrepel geom_text_repel
+#' @importFrom facetted_pos_scales facetted_pos_scales
 .main_plot <- function(
   track_to_plot,
   dataset_names,
@@ -461,6 +477,7 @@
   )
 }
 
+#' @importFrom dplyr arrange mutate bind_rows distinct
 .codon_queries <- function(
   codon_queries,
   track_to_plot,
@@ -527,7 +544,7 @@
     }
 
     codons_to_plot
-  }) |> bind_rows() |>
+  }) |> dplyr::bind_rows() |>
     dplyr::arrange(exon_position) |>
     dplyr::mutate(
       framing = "no_framing",
@@ -645,8 +662,9 @@
 }
 
 #' @importFrom ggh4x force_panelsizes
-#' @importFrom dplyr filter mutate coalesce select arrange rename
+#' @importFrom dplyr filter mutate coalesce select arrange rename bind_rows case_when summarise group_by left_join
 #' @importFrom patchwork wrap_plots plot_layout plot_annotation
+#' @importFrom patchwork plot_layout plot_annotation wrap_plots
 .plot_helper <- function(
   transcript_tracks,
   orf_object,
@@ -685,7 +703,7 @@
 
     if (!(transcript_filter %in% transcript_tracks@transcript_ids))
     {
-      abort(paste("Error!", transcript_filter, "not found within the BED data"))
+      stop(paste("Error!", transcript_filter, "not found within the BED data"))
     }
   }
 
@@ -769,7 +787,7 @@
   {
     track_to_plot <- track_to_plot |> dplyr::mutate(
       track_group = factor(
-        case_when(
+        dplyr::case_when(
           exon_position < original_start ~ "5_UTR",
           exon_position >= original_start & exon_position <= original_stop ~ orf_or_region,
           exon_position > original_stop ~ "3_UTR"), levels = c("5_UTR", orf_or_region, "3_UTR")
@@ -807,7 +825,7 @@
 
   # print(track_to_plot)
 
-  region_labels <- c("5_UTR" = "5' UTR", orf_or_region = orf_or_region, "3_UTR" = "3' UTR")
+  region_labels <- c("5_UTR" = "5'", orf_or_region = orf_or_region, "3_UTR" = "3'")
 
   plot_labels <- dataset_names[!(names(dataset_names) %in% filtered_framed_tracks)]
   plot_labels[names(plot_labels)] <- ifelse(
@@ -881,7 +899,7 @@
       dplyr::filter(!(exon_position %in% orf_tracks$exon_position)) |>
       dplyr::mutate(region = "Rest of Transcript")
 
-    combined_tracks <- bind_rows(orf_tracks, rest_of_transcript)
+    combined_tracks <- dplyr::bind_rows(orf_tracks, rest_of_transcript)
   }
   else
   {

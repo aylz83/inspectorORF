@@ -60,6 +60,21 @@ library(tidyverse)
 library(DT)
 ```
 
+Install Bioconductor dependencies -
+
+```{r eval = F}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install(c("plyranges", "bioseq", "Biostrings", "GenomicRanges", "rtracklayer")
+```
+
+Load the inspectorORF library -
+
+```{r eval = F}
+library(inspectorORF)
+```
+
 inspectorORF requires genomic sequences to be in 2bit format. Your genome FASTA of interest can be converted to with [UCSC's TwoBit tool](https://genome.ucsc.edu/goldenpath/help/twoBit.html) faToTwoBit as follows:
 
 ```{bash eval = F}
@@ -97,7 +112,7 @@ tracks <- inspectorORF::import_tracks_from_RiboTaper(
 
 #### ORFquant
 
-Data from ORFquant can also be utilised. RNA-Seq coverage previously calculated with `bedtools coverage` and the P-sites calculated by ORFquant can be merged with the `inspectorORF::merge_tracks_with_ORFquant` function as follows, which will return a GRanges.
+Data from ORFquant can also be utilised. RNA-Seq coverage previously calculated with `bedtools coverage` and the P-sites calculated by ORFquant can be merged with the `inspectorORF::merge_tracks_with_ORFquant` function as follows, which will return a GRanges object.
 
 All example data has been processed from GEO accession [GSE16214](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE16214), aligned to Gencode V44 and subset for the NTN4 gene.
 
@@ -223,7 +238,7 @@ inspectorORF::transcript_plot(
 )
 ```
 
-Again, although reads are within the highlighted codsing sequence, such reads are low, making it unlikely that this coding sequence is truly translated.
+Again, although reads are within the highlighted coding sequence, such reads are low, making it unlikely that this coding sequence is truly translated.
 
 Evaluating P-sites and triplet periodicity of reads outside of the ORF compared to the triplet periodicity within the ORF ($\text{Full transcript P-sites} - \text{ORF P-sites}$) can be helpful to understand the likelihood the ORF is being translated. As such, if triplet periodicity is present within the ORF, with reads primarily consisting of the ORFs frame, but triplet periodicity is lacking within the remainder of the transcript, this can give some confidence in the ORF truly being translated.
 
@@ -324,7 +339,7 @@ inspectorORF::orf_plot(
 )
 ```
 
-The rest of the transcript can also be plot by setting `plot_region = c(-1, -1)` which will plot these regions are 5'UTR and 3'UTR, essentially the same as `inspectorORF::transcript_plot` with a region highlighted.
+Reads outside of the ORF of interest can also be included by setting `plot_region = c(-1, -1)` which will plot these regions as 5' and 3'.
 
 However, this can be particularly useful to plot a portion of the untranslated region upstream, downstream or both, of the ORF. this can be included in the plot with `plot_region` as specific sizes. These values are relative to the provided start and stop positions. E.G. `plot_region = c(500, NA)`, `plot_region = c(NA, 500)`, and `plot_region = c(500, NA)` will include 50nt upstream, 50nt downstream, and 50nt both upstream and downstream to the ORF requested.
 
@@ -369,7 +384,7 @@ inspectorORF::orf_plot(
 )
 ```
 
-This plot shows that coverage for both RNA-Seq and P-Sites are significantly higher and spread across the coding sequence of interested in our treated (differentiated) cells. Suggessting the coding sequence is translated.
+This plot shows that coverage for both RNA-Seq and P-Sites are significantly higher and spread across the coding sequence of interested in our treated (differentiated) cells. Suggesting the coding sequence is translated.
 
 This reflects what ORFquant reports too, with this coding region being flagged as translated -
 
