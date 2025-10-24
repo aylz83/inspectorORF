@@ -4,10 +4,16 @@
 \alias{as.data.frame.inspectorORF_orflist}
 \title{Coerce the ORF object into a data.frame}
 \usage{
-\method{as.data.frame}{inspectorORF_orflist}(orfs)
+\method{as.data.frame}{inspectorORF_orflist}(x, row.names = NULL, optional = FALSE, ...)
 }
 \arguments{
-\item{orfs}{The object created from inspectorORF::find_orfs()}
+\item{x}{The object created from inspectorORF::find_orfs()}
+
+\item{row.names}{unused}
+
+\item{optional}{unused}
+
+\item{...}{Additional arguments passed to or from other methods.}
 }
 \value{
 A data.frame consisting of the ORFs
@@ -16,7 +22,14 @@ A data.frame consisting of the ORFs
 Coerce the ORF object into a data.frame
 }
 \examples{
-tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-test_orfs <- inspectorORF::find_orfs(test_tracks, "ENST00000643391.1")
+tracks <- inspectorORF::import_transcript_bed(
+  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+)
+test_orfs <- inspectorORF::find_orfs(
+  tracks,
+  "ENST00000343702.9"
+)
 df <- test_orfs |> as.data.frame()
 }

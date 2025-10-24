@@ -19,6 +19,7 @@ orf_plot(
   condition_names = c(rna_reads = ""),
   plot_read_pairs = c(p_sites = "rna_reads"),
   dataset_names = c(rna_reads = "RNA-Seq Reads", p_sites = "P-Sites"),
+  interactive = F,
   one_plot = T,
   legend_position = "bottom",
   text_size = 12
@@ -50,6 +51,14 @@ orf_plot(
 \item{plot_read_pairs}{Which RNA-Seq reads are associated with which P-Site reads. See example for further info}
 
 \item{dataset_names}{Custom naming to display on the plot for any read type}
+
+\item{interactive}{Enable to return an interactive plotly figure}
+
+\item{one_plot}{Should a combined figure be returned or individual figures for main plot and any triplet periodicity plots}
+
+\item{legend_position}{Location of the legend within the figure}
+
+\item{text_size}{Text size within the figure}
 }
 \value{
 A ggplot of the ORF
@@ -58,7 +67,15 @@ A ggplot of the ORF
 Plot the reads within an ORF of a transcript
 }
 \examples{
-tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.nnotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-test_orf_plot <- inspectorORF::orf_plot(tracks, transcript_filter = "ENST00000486256.5", start_position = 1702)
+tracks <- inspectorORF::import_transcript_bed(
+  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+)
+test_orf_plot <- inspectorORF::orf_plot(
+  tracks,
+  transcript_filter = "ENST00000343702.9",
+  start_position = 456
+)
 test_orf_plot
 }

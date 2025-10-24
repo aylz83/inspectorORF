@@ -4,12 +4,12 @@
 \alias{gene_to_transcript_tracks}
 \title{Extracts reads from gene level data relevant to a transcript of interest}
 \usage{
-gene_to_transcript_tracks(gene_tracks, transcript_id_filter)
+gene_to_transcript_tracks(gene_tracks, transcript_filter)
 }
 \arguments{
 \item{gene_tracks}{The gene tracks object obtained from inspectorORF::import_gene_tracks}
 
-\item{transcript_id_filter}{The transcript ids of interest}
+\item{transcript_filter}{The transcript ids of interest}
 }
 \value{
 A transcript tracks object
@@ -18,6 +18,13 @@ A transcript tracks object
 Extracts reads from gene level data relevant to a transcript of interest
 }
 \examples{
-gene_tracks <- inspectorORF::import_gene_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-tx_tracks <- inspectorORF::gene_to_transcript_tracks(gene_tracks, transcript_id_filter = c("ENST00000361764.9", "ENST00000643391.1"))
+gene_tracks <- inspectorORF::import_gene_bed(
+  system.file("example_data", "example_gene.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF")
+)
+tx_tracks <- inspectorORF::gene_to_transcript_tracks(
+  gene_tracks,
+  transcript_filter = c("ENST00000361764.9", "ENST00000643391.1")
+)
 }

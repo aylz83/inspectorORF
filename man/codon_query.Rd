@@ -27,7 +27,16 @@ a named list
 A simple wrapper function for a named list to specify codon types you wish to annotate on the ORF/transcript plot
 }
 \examples{
-tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-test_orf_plot <- inspectorORF::orf_plot(tracks, transcript_filter = "ENST00000486256.5", start_position = 1702, codon_queries = list(codon_query(annotate_start = T)))
+tracks <- inspectorORF::import_transcript_bed(
+  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+)
+test_orf_plot <- inspectorORF::orf_plot(
+  tracks,
+  transcript_filter = "ENST00000343702.9",
+  start_position = 456,
+  codon_queries = list(codon_query(annotate_start = TRUE))
+)
 test_orf_plot
 }

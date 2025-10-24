@@ -34,8 +34,16 @@ Obtain track information for one or more transcripts from RiboTaper/ORFquant res
 }
 \examples{
 tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-  rna_reads = "rna_reads.bed",
-  orfquant_psites = "reads_for_ORFquant")
+  rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
+  orfquant_psites = system.file(
+    "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+  )
+)
 
-tx_tracks <- get_transcript_tracks("annotation.gtf")
+tx_tracks <- inspectorORF::get_transcript_tracks(
+  tracks,
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+  transcript_ids = c("ENST00000343702.9")
+)
 }

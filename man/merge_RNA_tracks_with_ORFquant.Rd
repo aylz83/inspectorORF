@@ -34,23 +34,52 @@ Create a tracks object from quantified RNA reads and P-site information from ORF
 }
 \examples{
 tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-  rna_reads = "rna_reads.bed",
-  orfquant_psites = "reads_for_ORFquant")
+  rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
+  orfquant_psites = system.file(
+    "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+  )
+)
 
 # Creating a tracks object with multiple conditions
 # with the control under the regular rna_reads/orfquant_psites and an additional treated label
 tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-  rna_reads = "rna_reads.bed",
-  orfquant_psites = "reads_for_ORFquant",
-  extra = list(treated_rna_reads = "treated_rna_reads.bed"),
-  extra_orfquant_psites = list(treated_psites = "treated_reads_for_ORFquant"))
+  rna_reads = system.file(
+    "example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"
+  ),
+  orfquant_psites = system.file(
+    "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+  ),
+  extra = list(treated_rna_reads = system.file(
+    "example_data", "treated_rna_tracks.bed.gz", package = "inspectorORF")
+  ),
+  extra_orfquant_psites = list(
+    treated_psites = system.file(
+      "example_data", "treated_psites_for_ORFquant", package = "inspectorORF"
+    )
+  )
+)
 
 # Creating a tracks object with multiple conditions and additional read data for control
 # with the control under the regular rna_reads/orfquant_psites and an additional treated label
 tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-  rna_reads = "rna_reads.bed",
-  orfquant_psites = "reads_for_ORFquant",
-  extra = list(treated_rna_reads = "treated_rna_reads.bed",
-               dRNA_reads = "dRNA_reads.bed"),
-  extra_orfquant_psites = list(treated_psites = "treated_reads_for_ORFquant"))
+	 rna_reads = system.file(
+    "example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"
+  ),
+  orfquant_psites = system.file(
+    "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+  ),
+  extra = list(treated_rna_reads = system.file(
+    "example_data", "treated_rna_tracks.bed.gz", package = "inspectorORF"
+  ),
+  # Control dRNA tracks not provided due to such reads being absent within the control cells.
+  treated_dRNA_reads = system.file(
+    "example_data", "treated_dRNA_tracks.bed.gz", package = "inspectorORF")
+  ),
+  extra_orfquant_psites = list(
+    treated_psites = system.file(
+      "example_data", "treated_psites_for_ORFquant", package = "inspectorORF"
+    )
+  )
+)
+
 }
