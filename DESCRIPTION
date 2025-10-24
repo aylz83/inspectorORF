@@ -5,7 +5,7 @@ Authors@R: c(
   person("Eilidh", "Ward", email = "bs18e3w@leeds.ac.uk", role = c("aut", "cre")),
   person("Isabel", "Birds", role = c("aut")))
 Description: Utilises output from either ORFquant or RiboTaper, along with additional genomic or transcriptomic data, such as but not limited to RNA-Seq, long-read sequencing data, proteomics, Kozak scores etc to produce figures of transcripts or coding regions of interest with the ability to display multiple samples or conditions, codons of interest.
-License: use_mit_license()
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
@@ -16,6 +16,10 @@ Suggests:
     rmarkdown
 Config/testthat/edition: 3
 Imports:
+    S4Vectors,
+    stringr,
+    tibble,
+    tidyr,
     bioseq,
     plyranges,
     Biostrings,
