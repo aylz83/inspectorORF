@@ -27,5 +27,9 @@ An inspectorORF_txtracks object consisting of the relevant reads
 Import reads from a bed file where the tracks are transcript level information
 }
 \examples{
-tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
+tracks <- inspectorORF::import_transcript_bed(
+  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF")
+)
 }

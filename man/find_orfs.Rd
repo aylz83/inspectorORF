@@ -30,7 +30,7 @@ find_orfs(
 \item{orf_length_filter}{The minimum length to be considered an ORF (optional) (default: 3)}
 }
 \value{
-A tibble of ORFs consisting of frame, start codon, stop codon, start position, stop position, length in nucleotides and length in amino acids
+An ORF object consisting of frame, start codon, stop codon, start position, stop position, length in nucleotides and length in amino acids
 }
 \description{
 Creates a table of ORFs found within a transcript, where ORF is defined as
@@ -38,7 +38,14 @@ a start (default "AUG", "CUG", "GUG", "UUG", "AAG", and "ACG") and stop ("UAG", 
 This does not perform any checks to see if the ORF is translated, it is simply an in-frame start and stop search.
 }
 \examples{
-tracks <- inspectorORF::import_orf_tracks("test.bed", "gencode.v44.nnotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-test_orfs <- inspectorORF::find_orfs(test_tracks, "ENST00000643391.1")
+tracks <- inspectorORF::import_transcript_bed(
+  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+)
+test_orfs <- inspectorORF::find_orfs(
+  tracks,
+  "ENST00000343702.9"
+)
 test_orfs
 }

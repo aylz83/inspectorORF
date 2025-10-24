@@ -7,16 +7,22 @@
 #' @export
 #'
 #' @examples
-#' tracks <- inspectorORF::import_tracks_from_RiboTaper(c('Psit_Ribo_Rna_Cent_tracks_ccds', 'Psit_Ribo_Rna_Cent_tracks_nonccds'))
+#' tracks <- inspectorORF::import_tracks_from_RiboTaper(
+#'   c('Psit_Ribo_Rna_Cent_tracks_ccds', 'Psit_Ribo_Rna_Cent_tracks_nonccds')
+#' )
 #' @importFrom dplyr slice mutate row_number group_by distinct
 #' @importFrom tidyr separate_longer_delim
 #' @importClassesFrom GenomicRanges GRanges
+#' @importClassesFrom IRanges IRanges
 import_tracks_from_RiboTaper <- function(...)
 {
   tracks_data <- list(...)
   tracks_data <- sapply(tracks_data, .read_big_text, simplify = F) |>
     unlist() |>
     data.frame(V1 = .)
+
+  tracks_data <- tracks_data |>
+    dplyr::mutate(V1 = gsub("[_ ]", "_", V1))
 
   tracks <- tracks_data |> tidyr::separate_wider_delim(
     cols = V1,
@@ -27,11 +33,11 @@ import_tracks_from_RiboTaper <- function(...)
               "gene_id",
               "strand",
               "track"),
-    delim = stringr::regex(pattern = "[_ ]"),
+    delim = "_",
     too_many = "merge"
   ) |>
     # every 1st, 3rd and 4th row in RiboTaper data are p_site, rna_reads and rna_abundance tracks
-    dplyr::slice(which((row_number() %% 5) %in% c(1, 3, 4))) |>
+    dplyr::slice(which((dplyr::row_number() %% 5) %in% c(1, 3, 4))) |>
     dplyr::mutate(track_type = rep(c("p_sites",
                                      "rna_reads",
                                      "rna_abundance"),
@@ -45,7 +51,7 @@ import_tracks_from_RiboTaper <- function(...)
     dplyr::distinct()
 
   GRanges(tracks$seqnames,
-          IRanges(tracks$start, width = 1),
+          IRanges::IRanges(tracks$start, width = 1),
           strand = tracks$strand,
           p_sites = tracks$p_sites,
           rna_abundance = tracks$rna_abundance,
@@ -67,27 +73,58 @@ import_tracks_from_RiboTaper <- function(...)
 #'
 #' @examples
 #' tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-#'   rna_reads = "rna_reads.bed",
-#'   orfquant_psites = "reads_for_ORFquant")
-#'
+#'   rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
+#'   orfquant_psites = system.file(
+#'     "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+#'   )
+#' )
+#' 
 #' # Creating a tracks object with multiple conditions
 #' # with the control under the regular rna_reads/orfquant_psites and an additional treated label
 #' tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-#'   rna_reads = "rna_reads.bed",
-#'   orfquant_psites = "reads_for_ORFquant",
-#'   extra = list(treated_rna_reads = "treated_rna_reads.bed"),
-#'   extra_orfquant_psites = list(treated_psites = "treated_reads_for_ORFquant"))
+#'   rna_reads = system.file(
+#'     "example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"
+#'   ),
+#'   orfquant_psites = system.file(
+#'     "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+#'   ),
+#'   extra = list(treated_rna_reads = system.file(
+#'     "example_data", "treated_rna_tracks.bed.gz", package = "inspectorORF")
+#'   ),
+#'   extra_orfquant_psites = list(
+#'     treated_psites = system.file(
+#'       "example_data", "treated_psites_for_ORFquant", package = "inspectorORF"
+#'     )
+#'   )
+#' )
 #'
 #' # Creating a tracks object with multiple conditions and additional read data for control
 #' # with the control under the regular rna_reads/orfquant_psites and an additional treated label
 #' tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-#'   rna_reads = "rna_reads.bed",
-#'   orfquant_psites = "reads_for_ORFquant",
-#'   extra = list(treated_rna_reads = "treated_rna_reads.bed",
-#'                dRNA_reads = "dRNA_reads.bed"),
-#'   extra_orfquant_psites = list(treated_psites = "treated_reads_for_ORFquant"))
+#' 	 rna_reads = system.file(
+#'     "example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"
+#'   ),
+#'   orfquant_psites = system.file(
+#'     "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+#'   ),
+#'   extra = list(treated_rna_reads = system.file(
+#'     "example_data", "treated_rna_tracks.bed.gz", package = "inspectorORF"
+#'   ),
+#'   # Control dRNA tracks not provided due to such reads being absent within the control cells.
+#'   treated_dRNA_reads = system.file(
+#'     "example_data", "treated_dRNA_tracks.bed.gz", package = "inspectorORF")
+#'   ),
+#'   extra_orfquant_psites = list(
+#'     treated_psites = system.file(
+#'       "example_data", "treated_psites_for_ORFquant", package = "inspectorORF"
+#'     )
+#'   )
+#' )
+#'
 #' @importFrom dplyr full_join mutate
 #' @importClassesFrom GenomicRanges GRanges
+#' @importFrom dplyr across where
+#' @importFrom methods as
 merge_RNA_tracks_with_ORFquant <- function(rna_reads,
                                            rna_abundance = NULL,
                                            orfquant_psites,
@@ -160,7 +197,7 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
 
   joined_reads |>
     # purrr::reduce(c(tracks, psite_tracks), dplyr::full_join, by = c("seqnames", "start", "strand")) |>
-    dplyr::mutate(across(where(is.numeric), ~replace_na(., 0))) |>
+    dplyr::mutate(dplyr::across(dplyr::where(is.numeric), ~replace_na(., 0))) |>
     dplyr::mutate(end = start) |>
     as("GRanges")
 }
@@ -169,21 +206,35 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
 #'
 #' @param tracks the tracks object consisting of
 #' @param gtf_file Path to the gtf annotation
-#' @param gene_ids
+#' @param genome_file Path to the genome annotation 2bit file
+#' @param gene_ids the gene ids of interest
+#' @param framed_tracks the name of rows which contain p-site data. Defaults to p_sites.
 #'
 #' @return A GRangesList of all the genes requested
 #' @export
 #'
 #' @examples
 #' tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-#'   rna_reads = "rna_reads.bed",
-#'   orfquant_psites = "reads_for_ORFquant")
+#'   rna_reads = system.file(
+#'     "example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"
+#'   ),
+#'   orfquant_psites = system.file(
+#'     "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+#'   )
+#' )
 #'
-#' tx_tracks <- get_gene_tracks("annotation.gtf", gene_ids = c("ENSG000005234.1"))
+#' gene_tracks <- inspectorORF::get_gene_tracks(
+#'   tracks,
+#'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+#'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+#'   gene_ids = c("ENSG00000074527.13")
+#' )
+#'
 #' @importFrom plyranges join_overlap_inner_within_directed
 #' @importFrom tidyr pivot_longer
-#' @importFrom dplyr select arrange
-#' @importFrom GenomicRanges split
+#' @importFrom methods as
+#' @importFrom dplyr select arrange desc
+#' @importFrom GenomicRanges split mcols
 #' @importClassesFrom IRanges IRanges
 #' @importClassesFrom GenomicRanges GRanges GRangesList
 #' @importClassesFrom rtracklayer UCSCData
@@ -202,23 +253,23 @@ get_gene_tracks <- function(tracks,
   lapply(tracks_list, function(new_tracks)
   {
     gene_tracks <- new_tracks |> as.data.frame() |>
-      dplyr::select(-c(setdiff(colnames(mcols(gene_info)), "gene_id")))
+      dplyr::select(-c(setdiff(colnames(GenomicRanges::mcols(gene_info)), "gene_id")))
 
     if (gene_tracks$strand[[1]] == "-")
     {
-      gene_tracks <- gene_tracks |> dplyr::arrange(desc(start))
+      gene_tracks <- gene_tracks |> dplyr::arrange(dplyr::desc(start))
     }
     else
     {
       gene_tracks <- gene_tracks |> dplyr::arrange(start)
     }
 
-    score_names <- colnames(mcols(tracks))
+    score_names <- colnames(GenomicRanges::mcols(tracks))
 
     gene_tracks <- gene_tracks |> tidyr::pivot_longer(cols = score_names, values_to = "score")
 
     ucsc_data <- GRanges(gene_tracks$seqnames,
-                         IRanges(gene_tracks$start, width = 1),
+                         IRanges::IRanges(gene_tracks$start, width = 1),
                          strand = gene_tracks$strand,
                          name = gene_tracks$name,
                          score = gene_tracks$score) |>
@@ -245,11 +296,19 @@ get_gene_tracks <- function(tracks,
 #'
 #' @examples
 #' tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-#'   rna_reads = "rna_reads.bed",
-#'   orfquant_psites = "reads_for_ORFquant")
+#'   rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
+#'   orfquant_psites = system.file(
+#'     "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+#'   )
+#' )
 #'
-#' tx_tracks <- get_transcript_tracks("annotation.gtf")
-#' @importFrom dplyr arrange mutate ungroup group_by left_join
+#' tx_tracks <- inspectorORF::get_transcript_tracks(
+#'   tracks,
+#'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+#'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+#'   transcript_ids = c("ENST00000343702.9")
+#' )
+#' @importFrom dplyr arrange mutate ungroup group_by left_join n desc
 #' @importFrom plyranges join_overlap_inner_within_directed
 #' @importClassesFrom GenomicRanges GRanges GRangesList
 #' @importClassesFrom rtracklayer UCSCData
@@ -300,9 +359,9 @@ get_transcript_tracks <- function(tracks,
     transcript_tracks <- transcript_tracks |> pivot_longer(cols = score_names, values_to = "score") |>
       dplyr::group_by(transcript_id) |>
       dplyr::mutate(end = start,
-                    exon_position = rep(1:(n() / read_names_count), each = read_names_count, length.out = n()),
-                    og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = n())),
-                    framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = n()), name)),
+                    exon_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
+                    og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
+                    framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name)),
                     # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
                     # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
                     is_exon = T) |>
@@ -336,10 +395,18 @@ get_transcript_tracks <- function(tracks,
 #'
 #' @examples
 #' tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-#'   rna_reads = "rna_reads.bed",
-#'   orfquant_psites = "reads_for_ORFquant")
+#'   rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
+#'   orfquant_psites = system.file(
+#'     "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+#'   )
+#' )
 #'
-#' tx_tracks <- get_transcript_tracks("annotation.gtf")
+#' tx_tracks <- inspectorORF::get_transcript_tracks(
+#'   tracks,
+#'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+#'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+#'   transcript_ids = c("ENST00000343702.9")
+#' )
 #' save_tracks(tx_tracks, "output_tracks.bed")
 #' @importFrom rtracklayer export
 save_tracks <- function(tracks, filename)

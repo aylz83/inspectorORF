@@ -23,6 +23,8 @@ get_orf_nt_seq(
 \item{start_position}{The start position to use for the ORF}
 
 \item{stop_position}{The stop position to use for the ORF (optional)}
+
+\item{stop_codons}{Which stop codons to consider end of the ORF sequence, defaults to UAG, UAA and UGA}
 }
 \value{
 An RNAStringSet consisting of the ORF nucleotides
@@ -32,7 +34,16 @@ Extracts the ORF sequence from a transcript track,
 if the stop position is omitted, the nearest downstream, in-frame stop codon is used from the supplied start codon
 }
 \examples{
-tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.nnotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-test_orfs <- inspectorORF::find_orfs(tracks, "ENST00000643391.1")
-inspectorORF::get_orf_nt_seq(tracks, test_orfs[[1]])
+tracks <- inspectorORF::import_transcript_bed(
+  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+)
+test_orfs <- inspectorORF::find_orfs(
+  tracks, "ENST00000343702.9"
+)
+inspectorORF::get_orf_nt_seq(
+  tracks,
+  test_orfs[[1]]
+)
 }

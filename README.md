@@ -41,20 +41,37 @@ devtools::install_github("aylz83/inspectorORF")
 ```
 
 ##  Dependencies
-- bioseq
-- plyranges
-- Biostrings
-- data.table
-- GenomicRanges
-- ggh4x
-- ggplot2
-- ggrepel
-- grid
-- patchwork
-- rtracklayer
-- parallel
-- dplyr
-- methods
+
+ - S4Vectors
+ - stringr,
+ - tibble,
+ - tidyr,
+ - bioseq
+ - plyranges
+ - Biostrings
+ - data.table
+ - GenomicRanges
+ - ggh4x
+ - ggplot2
+ - ggrepel
+ - grid
+ - patchwork
+ - rtracklayer 
+ - parallel
+ - dplyr
+ - methods
+
+## Optional dependencies for interactive plots
+
+ - plotly
+
+## Optional dependencies for the shiny interface
+
+ - shiny
+ - reactable
+ - shinyFiles
+ - shinycssloaders
+ - shinydashboard
 
 ## Example Data
 

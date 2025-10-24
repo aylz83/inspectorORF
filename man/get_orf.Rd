@@ -19,8 +19,18 @@ Gets details of an ORF found within the ORF list based on the start site.
 This does not perform any checks to see if the ORF is translated, it is simply an in-frame start and stop search.
 }
 \examples{
-tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.nnotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-test_orfs <- inspectorORF::find_orfs(test_tracks, "ENST00000643391.1")
-orf <- inspectorORF::get_orf(test_orfs, start_position = 49)
+tracks <- inspectorORF::import_transcript_bed(
+  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+)
+test_orfs <- inspectorORF::find_orfs(
+  tracks,
+  "ENST00000343702.9"
+)
+orf <- inspectorORF::get_orf(
+  test_orfs,
+  start_position = 49
+)
 orf
 }

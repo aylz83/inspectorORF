@@ -4,16 +4,25 @@
 \alias{print.inspectorORF_orflist}
 \title{Print obtained ORFs}
 \usage{
-\method{print}{inspectorORF_orflist}(orf, ..., quote = FALSE)
+\method{print}{inspectorORF_orflist}(x, ...)
 }
 \arguments{
-\item{orf}{The object created from inspectorORF::find_orfs()}
+\item{x}{The object created from inspectorORF::find_orfs()}
+
+\item{...}{Additional arguments passed to or from other methods.}
 }
 \description{
 Prints out the obtained ORFs as a data.frame
 }
 \examples{
-tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.nnotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-test_orfs <- inspectorORF::find_orfs(test_tracks, "ENST00000643391.1")
+tracks <- inspectorORF::import_transcript_bed(
+  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+)
+test_orfs <- inspectorORF::find_orfs(
+  tracks,
+  "ENST00000343702.9"
+)
 print(test_orfs)
 }

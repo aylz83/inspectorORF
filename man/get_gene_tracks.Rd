@@ -17,7 +17,11 @@ get_gene_tracks(
 
 \item{gtf_file}{Path to the gtf annotation}
 
-\item{gene_ids}{}
+\item{genome_file}{Path to the genome annotation 2bit file}
+
+\item{gene_ids}{the gene ids of interest}
+
+\item{framed_tracks}{the name of rows which contain p-site data. Defaults to p_sites.}
 }
 \value{
 A GRangesList of all the genes requested
@@ -27,8 +31,19 @@ Obtain tracks for a specific gene or genes from RiboTaper or ORFQuant results
 }
 \examples{
 tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
-  rna_reads = "rna_reads.bed",
-  orfquant_psites = "reads_for_ORFquant")
+  rna_reads = system.file(
+    "example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"
+  ),
+  orfquant_psites = system.file(
+    "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+  )
+)
 
-tx_tracks <- get_gene_tracks("annotation.gtf", gene_ids = c("ENSG000005234.1"))
+gene_tracks <- inspectorORF::get_gene_tracks(
+  tracks,
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+  gene_ids = c("ENSG00000074527.13")
+)
+
 }

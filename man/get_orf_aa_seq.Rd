@@ -31,7 +31,15 @@ Extracts the ORF sequence from a transcript track,
 if the stop position is omitted, the nearest downstream, in-frame stop codon is used from the supplied start codon
 }
 \examples{
-tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.nnotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-orf_aa_sequence <- inspectorORF::get_orf_aa_seq(tracks, transcript_filter = "ENST00000486256.5", start_position = 1702)
+tracks <- inspectorORF::import_transcript_bed(
+  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+)
+orf_aa_sequence <- inspectorORF::get_orf_aa_seq(
+  tracks,
+  transcript_filter = "ENST00000343702.9",
+  start_position = 456
+)
 orf_aa_sequence
 }

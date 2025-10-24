@@ -4,3 +4,7 @@ vignettes/*.html
 
 ^doc$
 ^Meta$
+^LICENSE\.md$
+LICENSE.BRGenomics
+images/
+
