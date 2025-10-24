@@ -4,12 +4,12 @@
 \alias{get_transcripts_for_gene}
 \title{Get a vector of all transcript ids found within a particular gene_id}
 \usage{
-get_transcripts_for_gene(gene_tracks, gene_filter)
+get_transcripts_for_gene(gene_tracks, gene_id_filter)
 }
 \arguments{
 \item{gene_tracks}{The gene tracks object, obtained from import_gene_tracks}
 
-\item{gene_filter}{The gene_id of interest}
+\item{gene_id_filter}{The gene_id of interest}
 }
 \value{
 A vector of transcript_ids associated with the gene_id
@@ -18,13 +18,6 @@ A vector of transcript_ids associated with the gene_id
 Get a vector of all transcript ids found within a particular gene_id
 }
 \examples{
-gene_tracks <- inspectorORF::import_gene_bed(
-  system.file("example_data", "example_gene.bed", package = "inspectorORF"),
-  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
-  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF")
-)
-print(inspectorORF::get_transcripts_for_gene(
-  gene_tracks,
-  gene_filter = "ENSG00000074527.1"
-))
+gene_tracks <- inspectorORF::import_gene_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
+print(inspectorORF::get_transcripts_for_gene(gene_tracks, gene_id = "ENSG00000092096.1"))
 }

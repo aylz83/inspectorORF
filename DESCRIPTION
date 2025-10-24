@@ -1,6 +1,6 @@
 Package: inspectorORF
 Title: An R package to plot Ribo-Seq and RNA-Seq coverage from ORFquant and RiboTaper outputs
-Version: 1.0.1
+Version: 1.1.0
 Authors@R: c(
   person("Eilidh", "Ward", email = "bs18e3w@leeds.ac.uk", role = c("aut", "cre")),
   person("Isabel", "Birds", role = c("aut")))
@@ -13,11 +13,17 @@ Suggests:
     testthat (>= 3.0.0),
     DT,
     knitr,
-    rmarkdown
+    rmarkdown,
+    tidyverse,
+    shiny,
+    plotly,
+    reactable,
+    shinyFiles,
+    shinycssloaders,
+    shinydashboard
 Config/testthat/edition: 3
 Imports:
     S4Vectors,
-    stringr,
     tibble,
     tidyr,
     bioseq,
@@ -29,12 +35,13 @@ Imports:
     ggh4x,
     ggplot2,
     ggrepel,
-    grid,
     patchwork,
     rtracklayer,
     parallel,
     dplyr,
-    methods
+    methods,
+    stats,
+    grid
 Config/BiocViews:
     GenomicRanges,
     plyranges,

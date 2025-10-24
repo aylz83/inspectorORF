@@ -11,10 +11,10 @@
 
 .debug_inform <- function(obj, output_file = "debug_log.txt")
 {
-  output <- capture.output(print(obj))
-  msg <- paste(output, collapse = "\n")
-  log_entry <- paste0(format(Sys.time(), "%H:%M:%S"), ": ", msg, "\n")
-  cat(log_entry, file = output_file, append = TRUE)
+  # output <- capture.output(print(obj))
+  # msg <- paste(output, collapse = "\n")
+  # log_entry <- paste0(format(Sys.time(), "%H:%M:%S"), ": ", msg, "\n")
+  # cat(log_entry, file = output_file, append = TRUE)
 }
 
 .read_big_text <- function(x)
@@ -170,8 +170,8 @@
   ) |> dplyr::mutate(chr_pos = start + position) |>
     dplyr::distinct(seqnames, chr_pos, strand, .keep_all = T) |>
     dplyr::select(seqnames, chr_pos, strand, score) |>
-    dplyr::rename(!!as.name(score_name) := score,
-                  start = chr_pos)
+    dplyr::rename_with(~ score_name, .cols = "score") |>
+    dplyr::rename(start = chr_pos)
 
   # GRanges(bed_data$seqnames,
   #         IRanges(bed_data$chr_pos, width = 1),
@@ -217,25 +217,33 @@
     dplyr::select(seqnames, start, strand, score) |>
     dplyr::mutate(start = as.numeric(start),
                   start = as.numeric(start)) |>
-    dplyr::rename(!!as.name(score_name) := score)
+    dplyr::rename_with(~ score_name, .cols = "score")
 }
 
 #' @importFrom dplyr mutate arrange group_by summarise
 #' @importFrom tibble deframe
+#' @importClassesFrom Biostrings RNAStringSet
+#' @importClassesFrom GenomicRanges GRanges
+#' @importFrom rtracklayer getSeq
 .obtain_sequences <- function(gtf_data, genome_file)
 {
   gtf_data |> as.data.frame() |>
-    dplyr::mutate(sequence = rtracklayer::getSeq(genome_file,
-                                                 which = GenomicRanges::GRanges(paste0(seqnames, ":", start, "-", end, ":", strand))) |>
-                    Biostrings::RNAStringSet() |>
-                    as.character()) |>
+    dplyr::mutate(
+      sequence = rtracklayer::getSeq(
+        genome_file,
+        which = GenomicRanges::GRanges(paste0(seqnames, ":", start, "-", end, ":", strand))) |>
+      Biostrings::RNAStringSet() |>
+      as.character()
+    ) |>
     dplyr::arrange(ifelse(strand == "-", dplyr::desc(start), xtfrm(start))) |>
     dplyr::group_by(transcript_id) |>
     dplyr::summarise(sequence = paste(sequence, collapse = "")) |>
     tibble::deframe()
 }
 
-#' @importFrom dplyr group_by mutate ungroup
+#' @importFrom dplyr group_by mutate ungroup n
+#' @importFrom methods as
+#' @importFrom plyranges join_overlap_inner_within_directed
 #' @importClassesFrom GenomicRanges GRanges
 .get_tracks <- function(tracks, gtf_subset, read_names_count, framed_tracks)
 {
@@ -243,8 +251,8 @@
     as.data.frame() |> # faster to convert to and from dataframe than it is to use plyranges::group_by?!
     dplyr::group_by(transcript_id) |>
     dplyr::mutate(
-      exon_position = rep(1:(n() / read_names_count), each = read_names_count, length.out = n()),
-      og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = n())),
+      exon_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
+      og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
       framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = n()), name))
       # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
       # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
@@ -256,6 +264,7 @@
   split(tracks, tracks$transcript_id) |> as("GRangesList")
 }
 
+#' @importFrom stats setNames
 .cat_lists <- function(list1, list2)
 {
   keys <- unique(c(names(list1), names(list2)))
@@ -292,9 +301,10 @@
   return(NULL)
 }
 
-#' @importFrom ggplot2 ggplot geom_bar aes scale_color_manual coord_cartesian xlab ylab theme_minimal theme facet_grid geom_blank
+#' @importFrom ggplot2 ggplot geom_bar aes scale_color_manual coord_cartesian xlab ylab theme_minimal theme facet_grid geom_blank scale_y_continuous
 #' @importFrom ggrepel geom_text_repel
 #' @importFrom ggh4x facetted_pos_scales
+#' @importFrom grid unit arrow
 .main_plot <- function(
   track_to_plot,
   dataset_names,
@@ -369,7 +379,7 @@
     theme(
       legend.position = legend_position,
       legend.title = element_blank(),
-      panel.spacing = unit(10, "pt"),
+      panel.spacing = grid::unit(10, "pt"),
       # panel.border = element_rect(colour = "black", fill = NA, linewidth = .5),
       panel.background = element_blank(),
       # axis.line = element_line(colour = "black"),
@@ -380,7 +390,7 @@
       strip.placement = "left",
       # strip.text = element_text(size = 12),
       strip.text.y.left = element_text(angle = 0),
-      axis.ticks.length = unit(0, "points"),
+      axis.ticks.length = grid::unit(0, "points"),
       text = element_text(size = text_size),
       axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
     ) +
@@ -457,7 +467,7 @@
         # direction = "x",
         bg.color = "grey30", # shadow color
         bg.r = 0.005, # shadow radius
-        arrow = arrow(length = unit(0.015, "npc"))
+        arrow = grid::arrow(length = grid::unit(0.015, "npc"))
       ) +
       geom_blank(data = codon_queries, aes(x = exon_position, y = 10)) +
       ggh4x::facetted_pos_scales(
@@ -582,6 +592,8 @@
   )
 }
 
+#' @importFrom ggplot2 ggplot geom_bar scale_color_manual aes labs theme_minimal theme scale_y_continuous facet_grid element_text element_blank labeller label_wrap_gen
+#' @importFrom tidyr drop_na
 .framing_plots <- function(
   track_to_plot,
   plot_colours,
@@ -665,6 +677,7 @@
 #' @importFrom dplyr filter mutate coalesce select arrange rename bind_rows case_when summarise group_by left_join
 #' @importFrom patchwork wrap_plots plot_layout plot_annotation
 #' @importFrom patchwork plot_layout plot_annotation wrap_plots
+#' @importFrom stats na.omit
 .plot_helper <- function(
   transcript_tracks,
   orf_object,
@@ -680,6 +693,7 @@
   plot_read_pairs,
   dataset_names,
   one_plot,
+  interactive,
   legend_position,
   text_size,
   .tx_plot,
@@ -917,13 +931,39 @@
 
   plot_figure_width <- c(3, 0.75)
 
+  if (interactive && requireNamespace("plotly", quietly = TRUE))
+  {
+    plot_list <- lapply(plot_list, plotly::ggplotly)
+  }
+  else if (interactive)
+  {
+    message("Plotly not installed - falling back to static figure.")
+  }
+
   if (one_plot)
   {
-    patchwork_plot <- patchwork::wrap_plots(plot_list, nrow = 1, widths = plot_figure_width) +
-      patchwork::plot_layout(guides = "collect") +
-      patchwork::plot_annotation(theme = theme(legend.position = "bottom"))
+    if (interactive && requireNamespace("plotly", quietly = TRUE))
+    {
+      return(
+        plotly::subplot(
+          plot_list,
+          nrows = 1,
+          ncols = length(plot_list),
+          shareX = FALSE,
+          shareY = FALSE,
+          titleX = TRUE,
+          titleY = TRUE
+        )
+      )
+    }
+    else
+    {
+      patchwork_plot <- patchwork::wrap_plots(plot_list, nrow = 1, widths = plot_figure_width) +
+        patchwork::plot_layout(guides = "collect") +
+        patchwork::plot_annotation(theme = theme(legend.position = "bottom"))
 
-    return(patchwork_plot)
+      return(patchwork_plot)
+    }
   }
 
   plot_list

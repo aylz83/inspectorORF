@@ -19,7 +19,6 @@ transcript_plot(
   plot_read_pairs = c(p_sites = "rna_reads"),
   dataset_names = c(rna_reads = "RNA-Seq Reads", p_sites = "P-Sites"),
   one_plot = T,
-  interactive = F,
   legend_position = "bottom",
   text_size = 12
 )
@@ -48,14 +47,6 @@ transcript_plot(
 \item{plot_read_pairs}{Which RNA-Seq reads are associated with which P-Site reads. See example for further info}
 
 \item{dataset_names}{Custom naming to display on the plot for any read type}
-
-\item{one_plot}{Should a combined figure be returned or individual figures for main plot and any triplet periodicity plots}
-
-\item{interactive}{Enable to return an interactive plotly figure}
-
-\item{legend_position}{Location of the legend within the figure}
-
-\item{text_size}{Text size within the figure}
 }
 \value{
 a ggplot object.
@@ -65,21 +56,10 @@ Plots the Ribo-Seq, RNA-Seq, and Mass-Spec data across a full transcript.
 Optionally, with an ORF of interest outlined.
 }
 \examples{
-tracks <- inspectorORF::import_transcript_tracks(
-  system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
-  gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
-  genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
-)
-tx_plot <- inspectorORF::transcript_plot(
-  tracks,
-  transcript_filter = "ENST00000343702.9"
-)
+tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
+tx_plot <- inspectorORF::transcript_plot(tracks, transcript_id_filter = "ENST00000361764.9")
 
 # Picking out an ORF of interest within the transcript plot
-tx_plot <- inspectorORF::transcript_plot(
-  tracks,
-  transcript_filter = "ENST00000343702.9",
-  start_position = 10,
-  stop_position = 30
-)
+tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
+tx_plot <- inspectorORF::transcript_plot(tracks, transcript_id_filter = "ENST00000361764.9", start_position = 10, stop_position = 30)
 }

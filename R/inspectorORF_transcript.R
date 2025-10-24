@@ -88,15 +88,22 @@ setClass(
 #' Get a vector of all transcript ids found within a particular gene_id
 #'
 #' @param gene_tracks The gene tracks object, obtained from import_gene_tracks
-#' @param gene_id_filter The gene_id of interest
+#' @param gene_filter The gene_id of interest
 #'
 #' @return A vector of transcript_ids associated with the gene_id
 #' @export
 #'
 #' @examples
-#' gene_tracks <- inspectorORF::import_gene_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-#' print(inspectorORF::get_transcripts_for_gene(gene_tracks, gene_id = "ENSG00000092096.1"))
-get_transcripts_for_gene <- function(gene_tracks, gene_id_filter)
+#' gene_tracks <- inspectorORF::import_gene_bed(
+#'   system.file("example_data", "example_gene.bed", package = "inspectorORF"),
+#'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+#'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF")
+#' )
+#' print(inspectorORF::get_transcripts_for_gene(
+#'   gene_tracks,
+#'   gene_filter = "ENSG00000074527.1"
+#' ))
+get_transcripts_for_gene <- function(gene_tracks, gene_filter)
 {
   gene_tracks@gtf |> dplyr::filter(gene_id == gene_id_filter) |>
     dplyr::pull(transcript_id) |>
@@ -114,10 +121,14 @@ get_transcripts_for_gene <- function(gene_tracks, gene_id_filter)
 #' @export
 #'
 #' @examples
-#' tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
+#' tracks <- inspectorORF::import_transcript_bed(
+#'   system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+#'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+#'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF")
+#' )
 #' @importFrom dplyr bind_rows distinct
 #' @importClassesFrom rtracklayer TwoBitFile
-#' @importFrom stringr str_detect
+#' @importFrom methods as new
 import_transcript_bed <- function(bed_file,
                                   gtf_file,
                                   genome_file,
@@ -155,9 +166,15 @@ import_transcript_bed <- function(bed_file,
 #' @export
 #'
 #' @examples
-#' gene_tracks <- inspectorORF::import_gene_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-#' tx_tracks <- inspectorORF::gene_to_transcript_tracks(gene_tracks, transcript_filter = c("ENST00000361764.9", "ENST00000643391.1"))
-#' @importFrom plyranges filter
+#' gene_tracks <- inspectorORF::import_gene_bed(
+#'   system.file("example_data", "example_gene.bed", package = "inspectorORF"),
+#'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+#'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF")
+#' )
+#' tx_tracks <- inspectorORF::gene_to_transcript_tracks(
+#'   gene_tracks,
+#'   transcript_filter = c("ENST00000361764.9", "ENST00000643391.1")
+#' )
 #' @importFrom plyranges filter
 gene_to_transcript_tracks <- function(gene_tracks,
 									  transcript_filter)
@@ -196,16 +213,31 @@ gene_to_transcript_tracks <- function(gene_tracks,
 #' @param condition_names Names of any datasets to plot, useful when plotting bed file which consists of reads from multiple datasets
 #' @param plot_read_pairs Which RNA-Seq reads are associated with which P-Site reads. See example for further info
 #' @param dataset_names Custom naming to display on the plot for any read type
+#' @param interactive Enable to return an interactive plotly figure
+#' @param one_plot Should a combined figure be returned or individual figures for main plot and any triplet periodicity plots
+#' @param legend_position Location of the legend within the figure
+#' @param text_size Text size within the figure
 #' @return a ggplot object.
 #' @export
 #'
 #' @examples
-#' tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-#' tx_plot <- inspectorORF::transcript_plot(tracks, transcript_id_filter = "ENST00000361764.9")
+#' tracks <- inspectorORF::import_transcript_tracks(
+#'   system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
+#'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+#'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+#' )
+#' tx_plot <- inspectorORF::transcript_plot(
+#'   tracks,
+#'   transcript_filter = "ENST00000343702.9"
+#' )
 #'
 #' # Picking out an ORF of interest within the transcript plot
-#' tracks <- inspectorORF::import_transcript_tracks("test.bed", "gencode.v44.annotation.gtf", "GRCh38.p14.primary_assembly.genome.2bit")
-#' tx_plot <- inspectorORF::transcript_plot(tracks, transcript_id_filter = "ENST00000361764.9", start_position = 10, stop_position = 30)
+#' tx_plot <- inspectorORF::transcript_plot(
+#'   tracks,
+#'   transcript_filter = "ENST00000343702.9",
+#'   start_position = 10,
+#'   stop_position = 30
+#' )
 transcript_plot <- function(transcript_tracks,
                             orf_object = NULL,
                             transcript_filter = NULL,
@@ -220,6 +252,7 @@ transcript_plot <- function(transcript_tracks,
                             dataset_names = c("rna_reads" = "RNA-Seq Reads",
                                               "p_sites" = "P-Sites"),
                             one_plot = T,
+                            interactive = F,
                             legend_position = "bottom",
                             text_size = 12)
 {
@@ -237,6 +270,7 @@ transcript_plot <- function(transcript_tracks,
            plot_read_pairs,
            dataset_names,
            one_plot,
+           interactive,
            legend_position,
            text_size,
            .tx_plot = T)
