@@ -72,7 +72,7 @@
 # I've found importing GTF can be faster if i process this myself due to the
 # ability of fread to use multiple cores
 #' @importFrom data.table fread
-#' @importClassFrom GenomicRanges GRanges
+#' @importClassesFrom GenomicRanges GRanges
 .import_gtf_hack <- function(gtf_file, transcripts_filter)
 {
   data.table::fread(
@@ -96,7 +96,7 @@
     as("GRanges")
 }
 
-#' @importClassFrom GenomicRanges GRanges
+#' @importClassesFrom GenomicRanges GRanges
 .import_gtf <- function(gtf_file, track_ids, track_type = "gene_id")
 {
   if (c("GRanges") %in% class(gtf_file) == T)
@@ -236,7 +236,7 @@
 }
 
 #' @importFrom dplyr group_by mutate ungroup
-#' @importClassFrom GenomicRanges GRanges
+#' @importClassesFrom GenomicRanges GRanges
 .get_tracks <- function(tracks, gtf_subset, read_names_count, framed_tracks)
 {
   tracks <- plyranges::join_overlap_inner_within_directed(tracks, gtf_subset, maxgap = -1L, minoverlap = 0L) |>
@@ -294,7 +294,7 @@
 
 #' @importFrom ggplot2 ggplot geom_bar aes scale_color_manual coord_cartesian xlab ylab theme_minimal theme facet_grid geom_blank
 #' @importFrom ggrepel geom_text_repel
-#' @importFrom facetted_pos_scales facetted_pos_scales
+#' @importFrom ggh4x facetted_pos_scales
 .main_plot <- function(
   track_to_plot,
   dataset_names,
