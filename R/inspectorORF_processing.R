@@ -204,6 +204,62 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
     as("GRanges")
 }
 
+#' Obtain tracks for a set of genes or transcript tracks by identifying the type of ids specified automatically
+#'
+#' @param tracks the tracks object consisting of
+#' @param gtf_file Path to the gtf annotation
+#' @param genome_file Path to the genome annotation 2bit file
+#' @param ids the gene ids of interest. If empty, will default to returning transcript tracks
+#' @param framed_tracks the name of rows which contain p-site data. Defaults to p_sites.
+#'
+#' @return An inspectorORF gene or transcript tracks object of all the ids requested
+#' @export
+#'
+#' @examples
+#' tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
+#'   rna_reads = system.file(
+#'     "example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"
+#'   ),
+#'   orfquant_psites = system.file(
+#'     "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
+#'   )
+#' )
+#'
+#' gene_tracks <- inspectorORF::get_id_tracks(
+#'   tracks,
+#'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+#'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+#'   ids = c("ENSG00000074527.13")
+#' )
+#'
+#' @importFrom plyranges join_overlap_inner_within_directed
+#' @importFrom tidyr pivot_longer
+#' @importFrom methods as new
+#' @importFrom dplyr select arrange desc
+#' @importFrom GenomicRanges split mcols
+#' @importClassesFrom IRanges IRanges
+#' @importClassesFrom GenomicRanges GRanges GRangesList
+#' @importClassesFrom rtracklayer UCSCData
+get_id_tracks <- function(tracks,
+                          gtf_file,
+                          genome_file,
+                          ids,
+                          framed_tracks = c("p_sites"))
+{
+  if (length(ids) == 0 || .check_id_type(gtf_file, ids[[1]]) == "transcript_id")
+  {
+    return(get_transcript_tracks(tracks, gtf_file, genome_file, ids, framed_tracks))
+  }
+  else if (.check_id_type(gtf_file, ids[[1]]) == "gene_id")
+  {
+    return(get_gene_tracks(tracks, gtf_file, genome_file, ids, framed_tracks))
+  }
+  else
+  {
+    stop("Unable to determine id type of gene_id or transcript_id")
+  }
+}
+
 #' Obtain tracks for a specific gene or genes from RiboTaper or ORFQuant results
 #'
 #' @param tracks the tracks object consisting of

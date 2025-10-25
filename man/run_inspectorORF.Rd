@@ -21,7 +21,7 @@ run_inspectorORF(
 \item{launch_browser}{launch the browser automatically if TRUE (default)}
 }
 \value{
-a shiny object if launch = FALSE
+a shiny object if launch = FALSE, otherwise, runs the app
 }
 \description{
 Build and optionally launch the main application

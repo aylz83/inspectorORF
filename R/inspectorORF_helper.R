@@ -35,12 +35,17 @@
 #' @importFrom plyranges filter
 .filter_gtf_df <- function(gtf_data, ids, attribute_column, track_type)
 {
-  if (track_type == "gene_id")
+  # if (track_type == "gene_id")
+  # {
+  #   filtered <- paste(ids, collapse = "|")
+  #   return (gtf_data |> plyranges::filter(type == "exon" & grepl(filtered, !!as.name(attribute_column))))
+  # }
+
+  if (length(ids) == 0 || is.null(ids) || is.na(ids))
   {
-    filtered <- paste(ids, collapse = "|")
-    return (gtf_data |> plyranges::filter(type == "exon" & grepl(filtered, !!as.name(attribute_column))))
+    return(gtf_data)
   }
-  
+
   filtered <- paste(ids, collapse = "|")
   gtf_data |> plyranges::filter(type == "exon" & grepl(filtered, !!as.name(attribute_column)))
 }
@@ -100,6 +105,42 @@
     .process_gtf_table() |>
     .select_gtf_df() |>
     as("GRanges")
+}
+
+#' @importFrom data.table fread
+.check_id_type <- function(gtf_file, filter)
+{
+  rows <- data.table::fread(
+    gtf_file,
+    sep = "\t",
+    header = F,
+    nrows = 10,
+    col.names = c(
+      "chr",
+      "source",
+      "type",
+      "start",
+      "end",
+      "score",
+      "strand",
+      "phase",
+      "attributes"
+    )
+  ) |> .filter_gtf_df(filter, "attributes", track_type) |>
+    .process_gtf_table()
+
+  if (filter %in% rows$gene_id)
+  {
+    return("gene_id")
+  }
+  else if (filter %in% rows$transcript_id)
+  {
+    return("transcript_id")
+  }
+  else
+  {
+    return("unknown")
+  }
 }
 
 #' @importClassesFrom GenomicRanges GRanges
@@ -217,7 +258,7 @@
 # from:
 # https://github.com/mdeber/BRGenomics/blob/dbab7113a1556c82053880cc0f106e97ac397f34/R/dataset_functions.R#L106
 # borrowed from BRGenomics (https://github.com/mdeber/BRGenomics) due to this package not installing via BiocManager anymore
-# A copy of the licence can be found in BRGenomics_LICENCE and
+# A copy of the licence can be found in LICENSE.BRGenomics and
 #' @importFrom methods is
 #' @importFrom GenomicRanges width GPos mcols mcols<- isDisjoint findOverlaps
 #'   GRanges sort
@@ -289,7 +330,7 @@
     dplyr::mutate(
       exon_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
       og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
-      framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = n()), name))
+      framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name))
       # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
       # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
       # is_exon = T
