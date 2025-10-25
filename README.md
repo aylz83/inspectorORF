@@ -2,9 +2,6 @@
 
 **Simplify the analysis and visualization of translated open reading frames (ORFs) using Ribo-Seq data.**
 
-![GitHub License](https://img.shields.io/github/license/aylz83/inspectorORF)
-![GitHub Release](https://img.shields.io/github/v/release/aylz83/inspectorORF)
-
 Detecting translated ORFs within Ribo-Seq data often requires evaluating typical features of translation, such as **triplet periodicity** within P-site alignments. `inspectorORF` simplifies the task of visualising and evaluating ORFs with a flexible plotting API and extensive annotation support.
 
 ---
