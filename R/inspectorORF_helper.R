@@ -549,7 +549,7 @@
       geom_blank(data = codon_queries, aes(x = exon_position, y = 10)) +
       ggh4x::facetted_pos_scales(
         y = list(
-          name == "annotated_codons" ~ scale_y_continuous(
+          c("annotated_start_codons", "annotated_stop_codons") %in% name ~ scale_y_continuous(
             limits = c(0, 10),
             breaks = NULL,
             labels = NULL
@@ -562,6 +562,47 @@
     rows = row_sizes,
     cols = col_size
   )
+}
+
+#' @importFrom dplyr arrange mutate bind_rows distinct
+.search_for_codons <- function(
+  sequence,
+  codons_to_search,
+  original_start,
+  start_position,
+  stop_position,
+  in_frame,
+  is_start
+)
+{
+  codons_to_plot <- sapply(1:3, function(frame)
+  {
+    codons <- sapply(seq(from = frame, to = nchar(sequence), by = 3),
+                     function(i) substr(sequence, i, i + 2))
+
+    found <- codons %in% codons_to_search
+    names(found) <- codons
+
+    (which(found) * 3) + frame - 3
+  }, simplify = F) |> unlist() |> sort()
+
+  codons_to_plot <- data.frame(
+    codon = names(codons_to_plot),
+    exon_position = codons_to_plot,
+    p_site_framing = (codons_to_plot - 1) %% 3,
+    name = ifelse(is_start == T, "annotated_start_codons", "annotated_stop_codons")
+  )
+
+  codons_to_plot <- codons_to_plot |>
+    dplyr::filter(exon_position >= start_position & exon_position <= stop_position)
+
+  if (in_frame == T)
+  {
+    codons_to_plot <- codons_to_plot |>
+      dplyr::filter(p_site_framing == ((original_start - 1) %% 3))
+  }
+
+  codons_to_plot
 }
 
 #' @importFrom dplyr arrange mutate bind_rows distinct
@@ -585,36 +626,66 @@
 
   annotations <- lapply(codon_queries, function(query)
   {
+    stops_to_search = NULL
+
     if (query$annotate_start == T)
     {
+      # Create positional information for the ORFs start codon
       start_codon <- substr(sequence, start = original_start, stop = original_start + 2)
-      codons_to_plot <- data.frame(codon = start_codon, exon_position = original_start, name = "annotated_codons")
-    }
-    else
-    {
-      codons_to_plot <- sapply(1:3, function(frame)
-      {
-        codons <- sapply(seq(from = frame, to = nchar(sequence), by = 3),
-                         function(i) substr(sequence, i, i + 2))
-
-        found <- codons %in% query$annotation_codons
-        names(found) <- codons
-
-        (which(found) * 3) + frame - 3
-      }, simplify = F) |> unlist() |> sort()
-
       codons_to_plot <- data.frame(
-        codon = names(codons_to_plot),
-        exon_position = codons_to_plot,
-        p_site_framing = (codons_to_plot - 1) %% 3,
-        name = "annotated_codons"
+        codon = start_codon,
+        exon_position = original_start,
+        name = "annotated_start_codons",
+        is_start = T
       )
 
-      codons_to_plot <- codons_to_plot |>
-        dplyr::filter(exon_position >= start_position & exon_position <= stop_position)
+      if (is.logical(query$annotate_stop) && query$annotate_stop == T)
+      {
+        stops_to_search <- c("UAA", "UAG", "UGA")
+      }
+      else if (is.character(query$annotate_stop))
+      {
+        stops_to_search <- query$annotate_stop
+      }
+    }
+    else if (!is.null(query$annotation_codons))
+    {
+      codons_to_plot <- .search_for_codons(
+        sequence,
+        query$annotation_codons,
+        original_start,
+        start_position,
+        stop_position,
+        in_frame = query$in_frame,
+        is_start = T
+      )
 
       if (query$in_frame == T)
-        codons_to_plot <- codons_to_plot |> dplyr::filter(p_site_framing == ((original_start - 1) %% 3))
+      {
+        if (is.logical(query$annotate_stop) && query$annotate_stop == T)
+        {
+          stops_to_search <- c("UAA", "UAG", "UGA")
+        }
+        else if (is.character(query$annotate_stop))
+        {
+          stops_to_search <- query$annotate_stop
+        }
+      }
+    }
+
+    if (!is.null(stops_to_search))
+    {
+      stop_codons_to_plot <- .search_for_codons(
+        sequence,
+        stops_to_search,
+        original_start,
+        start_position,
+        stop_position,
+        in_frame = T,
+        is_start = F
+      )
+
+      codons_to_plot <- dplyr::bind_rows(codons_to_plot, stop_codons_to_plot)
     }
 
     if (!is.null(query$colour) && query$colour == "use_framing")
@@ -944,7 +1015,7 @@
 
   if (!is.null(codon_queries))
   {
-    plot_labels <- c(plot_labels, "annotated_codons" = "Labelled\nCodons")
+    plot_labels <- c(plot_labels, "annotated_start_codons" = "Labelled\nCodons", "annotated_stop_codons" = "Labelled\nStop Codons")
   }
 
   # obtain the tracks to plot

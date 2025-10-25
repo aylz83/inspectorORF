@@ -313,11 +313,12 @@ find_orfs <- function(transcript_tracks,
 #' A simple wrapper function for a named list to specify codon types you wish to annotate on the ORF/transcript plot
 #'
 #' @param annotation_codons a vector of strings consisting of which codons to search for within the sequence being plot
-#' @param annotate_start a logical indicating if the start codon should be anotated
+#' @param annotate_start a logical indicating if the start codon of the plotted ORF should be anotated
 #' @param in_frame a logical indicating if the annotation_codons should be in frame to the ORF or not
+#' @param annotate_stop if true and one of annotation_codons or annotate_start is included along with in_frame = TRUE, stop codons will also be annotated. Can be logical value to plot all three stop codons, or vector of strings to specify codons.
 #' @param colour a string consisting of the colour to plot the annotated codons in
 #'
-#' @return a named list
+#' @return a named list of set codon queries for use in the codon_queries option of the orf_plot function
 #' @export
 #'
 #' @examples
@@ -333,9 +334,30 @@ find_orfs <- function(transcript_tracks,
 #'   codon_queries = list(codon_query(annotate_start = TRUE))
 #' )
 #' test_orf_plot
-codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame = F, colour = NULL)
+codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame = F, annotate_stop = F, colour = NULL)
 {
-  list(annotation_codons = annotation_codons, annotate_start = annotate_start, in_frame = in_frame, colour = colour)
+  if (annotate_start == T && !is.null(annotation_codons))
+  {
+    stop("Please specify annotate_start and annotation_codons as separate queries.")
+  }
+
+  if (annotate_stop == T && in_frame == F && !is.null(annotation_codons))
+  {
+    stop("annotate_stop requires in_frame to be TRUE when using annotation_codons.")
+  }
+
+  if (annotate_stop == T && (annotate_start == F || is.null(annotation_codons)))
+  {
+    stop("annotate_stop requires either annotate_start or annotation_codons to be set.")
+  }
+
+  list(
+    annotation_codons = annotation_codons,
+    annotate_start = annotate_start,
+    in_frame = in_frame,
+    annotate_stop = annotate_stop,
+    colour = colour
+  )
 }
 
 #' Plot the reads within an ORF of a transcript
@@ -371,43 +393,46 @@ codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame =
 #' )
 #' test_orf_plot
 #' @export
-orf_plot <- function(transcript_tracks,
-                     orf_object = NULL,
-                     transcript_filter = NULL,
-                     start_position = NULL,
-                     stop_position = NULL,
-                     plot_region = c(start_position, stop_position),
-                     plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
-                     scale_to_psites = F,
-                     plot_transcript_summary = F,
-                     codon_queries = NULL,
-                     condition_names = c("rna_reads" = ""),
-                     plot_read_pairs = c("p_sites" = "rna_reads"),
-                     dataset_names = c("rna_reads" = "RNA-Seq Reads",
-                                       "p_sites" = "P-Sites"),
-                     interactive = F,
-                     one_plot = T,
-                     legend_position = "bottom",
-                     text_size = 12)
+orf_plot <- function(
+  transcript_tracks,
+  orf_object = NULL,
+  transcript_filter = NULL,
+  start_position = NULL,
+  stop_position = NULL,
+  plot_region = c(start_position, stop_position),
+  plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
+  scale_to_psites = F,
+  plot_transcript_summary = F,
+  codon_queries = NULL,
+  condition_names = c("rna_reads" = ""),
+  plot_read_pairs = c("p_sites" = "rna_reads"),
+  dataset_names = c("rna_reads" = "RNA-Seq Reads", "p_sites" = "P-Sites"),
+  interactive = F,
+  one_plot = T,
+  legend_position = "bottom",
+  text_size = 12
+)
 {
-  .plot_helper(transcript_tracks,
-               orf_object,
-               transcript_filter,
-               start_position,
-               stop_position,
-               plot_region,
-               plot_colours,
-               scale_to_psites,
-               plot_transcript_summary,
-               codon_queries,
-               condition_names,
-               plot_read_pairs,
-               dataset_names,
-               one_plot,
-               interactive,
-               legend_position,
-               text_size,
-               .tx_plot = F)
+  .plot_helper(
+    transcript_tracks,
+    orf_object,
+    transcript_filter,
+    start_position,
+    stop_position,
+    plot_region,
+    plot_colours,
+    scale_to_psites,
+    plot_transcript_summary,
+    codon_queries,
+    condition_names,
+    plot_read_pairs,
+    dataset_names,
+    one_plot,
+    interactive,
+    legend_position,
+    text_size,
+    .tx_plot = F
+  )
 }
 
 #' Extract the nucleotide seqeunce of an ORF within a transcript

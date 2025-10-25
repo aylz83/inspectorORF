@@ -101,11 +101,22 @@ setClass(
 #' )
 #' print(inspectorORF::get_transcripts_for_gene(
 #'   gene_tracks,
-#'   gene_filter = "ENSG00000074527.1"
+#'   gene_filter = "ENSG00000074527.13"
 #' ))
 #' @importFrom dplyr filter pull
+#' @importFrom GenomicRanges mcols
 get_transcripts_for_gene <- function(gene_tracks, gene_filter)
 {
+  if (length(gene_filter) > 1)
+  {
+    stop("gene_filter must contain one gene only.")
+  }
+
+  if (!(gene_filter %in% unique(GenomicRanges::mcols(gene_tracks@gtf)$gene_id)))
+  {
+    stop(paste0("Gene ", gene_filter, " not found within the gene tracks."))
+  }
+
   gene_tracks@gtf |> as.data.frame() |>
     dplyr::filter(gene_id == gene_filter) |>
     dplyr::pull(transcript_id) |>
@@ -178,11 +189,18 @@ import_transcript_bed <- function(bed_file,
 #'   transcript_filter = c("ENST00000343702.9", "ENST00000344911.8")
 #' )
 #' @importFrom plyranges filter
-gene_to_transcript_tracks <- function(gene_tracks,
-									  transcript_filter)
+gene_to_transcript_tracks <- function(
+  gene_tracks,
+  transcript_filter
+)
 {
   gtf_subset <- gene_tracks@gtf |>
     plyranges::filter(transcript_id %in% transcript_filter)
+
+  if (length(gtf_subset) == 0)
+  {
+    stop("No supplied transcripts were found within the gene tracks.")
+  }
 
   transcript_ids <- gtf_subset$transcript_id |> unique()
 
@@ -240,40 +258,43 @@ gene_to_transcript_tracks <- function(gene_tracks,
 #'   start_position = 10,
 #'   stop_position = 30
 #' )
-transcript_plot <- function(transcript_tracks,
-                            orf_object = NULL,
-                            transcript_filter = NULL,
-                            start_position = NULL,
-                            stop_position = NULL,
-                            plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
-                            scale_to_psites = F,
-                            plot_transcript_summary = F,
-                            codon_queries = NULL,
-                            condition_names = c("rna_reads" = ""),
-                            plot_read_pairs = c("p_sites" = "rna_reads"),
-                            dataset_names = c("rna_reads" = "RNA-Seq Reads",
-                                              "p_sites" = "P-Sites"),
-                            one_plot = T,
-                            interactive = F,
-                            legend_position = "bottom",
-                            text_size = 12)
+transcript_plot <- function(
+  transcript_tracks,
+  orf_object = NULL,
+  transcript_filter = NULL,
+  start_position = NULL,
+  stop_position = NULL,
+  plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
+  scale_to_psites = F,
+  plot_transcript_summary = F,
+  codon_queries = NULL,
+  condition_names = c("rna_reads" = ""),
+  plot_read_pairs = c("p_sites" = "rna_reads"),
+  dataset_names = c("rna_reads" = "RNA-Seq Reads", "p_sites" = "P-Sites"),
+  one_plot = T,
+  interactive = F,
+  legend_position = "bottom",
+  text_size = 12
+)
 {
-  .plot_helper(transcript_tracks,
-           orf_object,
-           transcript_filter,
-           start_position,
-           stop_position,
-           plot_region = c(-1, -1),
-           plot_colours,
-           scale_to_psites,
-           plot_transcript_summary,
-           codon_queries,
-           condition_names,
-           plot_read_pairs,
-           dataset_names,
-           one_plot,
-           interactive,
-           legend_position,
-           text_size,
-           .tx_plot = T)
+  .plot_helper(
+    transcript_tracks,
+    orf_object,
+    transcript_filter,
+    start_position,
+    stop_position,
+    plot_region = c(-1, -1),
+    plot_colours,
+    scale_to_psites,
+    plot_transcript_summary,
+    codon_queries,
+    condition_names,
+    plot_read_pairs,
+    dataset_names,
+    one_plot,
+    interactive,
+    legend_position,
+    text_size,
+    .tx_plot = T
+  )
 }

@@ -25,6 +25,6 @@ gene_tracks <- inspectorORF::import_gene_bed(
 )
 print(inspectorORF::get_transcripts_for_gene(
   gene_tracks,
-  gene_filter = "ENSG00000074527.1"
+  gene_filter = "ENSG00000074527.13"
 ))
 }
