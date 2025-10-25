@@ -160,7 +160,7 @@ To plot reads from a transcript or ORF, reads associated with either genes(s) or
 
 The example data provided consists of reads from RNA-Seq and P-Sites calculated from Ribo-Seq data (processed with ORFquant) for the NTN4 gene from undifferentiated (control) and differentiated (ra-treated) SH-SY5Y cells. To obtain gene level tracks for the human gene netrin 4 (NTN4, gene id ENSG00000074527.13), save the data as a bed file for future importing and obtain transcript level tracks for the transcript variant ENST00000343702.9 for plotting can be performed as follows:
 
-```{r tx_tracks_from_genome_tracks, eval = F}
+```{r tx_tracks_from_genome_tracks}
 # Obtain gene level tracks for the NTN4 gene - ENSG00000074527.13
 gene_tracks <- inspectorORF::get_gene_tracks(
 	tracks,

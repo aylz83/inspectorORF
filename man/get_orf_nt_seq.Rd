@@ -44,6 +44,6 @@ test_orfs <- inspectorORF::find_orfs(
 )
 inspectorORF::get_orf_nt_seq(
   tracks,
-  test_orfs[[1]]
+  test_orfs@orfs[[1]]
 )
 }

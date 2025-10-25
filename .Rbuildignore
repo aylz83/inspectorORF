@@ -7,4 +7,4 @@ vignettes/*.html
 ^LICENSE\.md$
 LICENSE.BRGenomics
 images/
-
+docker/

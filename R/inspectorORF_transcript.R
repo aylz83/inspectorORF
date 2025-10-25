@@ -103,9 +103,11 @@ setClass(
 #'   gene_tracks,
 #'   gene_filter = "ENSG00000074527.1"
 #' ))
+#' @importFrom dplyr filter pull
 get_transcripts_for_gene <- function(gene_tracks, gene_filter)
 {
-  gene_tracks@gtf |> dplyr::filter(gene_id == gene_id_filter) |>
+  gene_tracks@gtf |> as.data.frame() |>
+    dplyr::filter(gene_id == gene_filter) |>
     dplyr::pull(transcript_id) |>
     unname()
 }
@@ -144,7 +146,7 @@ import_transcript_bed <- function(bed_file,
 
   transcript_ids <- gtf_data$transcript_id |> unique()
 
-  sequences <- .obtain_sequences(gtf_data, TwoBitFile(genome_file))
+  sequences <- .obtain_sequences(gtf_data, rtracklayer::TwoBitFile(genome_file))
 
   read_names_count <- bed_tracks$name |> unique() |> length()
 
@@ -173,7 +175,7 @@ import_transcript_bed <- function(bed_file,
 #' )
 #' tx_tracks <- inspectorORF::gene_to_transcript_tracks(
 #'   gene_tracks,
-#'   transcript_filter = c("ENST00000361764.9", "ENST00000643391.1")
+#'   transcript_filter = c("ENST00000343702.9", "ENST00000344911.8")
 #' )
 #' @importFrom plyranges filter
 gene_to_transcript_tracks <- function(gene_tracks,
@@ -221,7 +223,7 @@ gene_to_transcript_tracks <- function(gene_tracks,
 #' @export
 #'
 #' @examples
-#' tracks <- inspectorORF::import_transcript_tracks(
+#' tracks <- inspectorORF::import_transcript_bed(
 #'   system.file("example_data", "example_tracks.bed", package = "inspectorORF"),
 #'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
 #'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),

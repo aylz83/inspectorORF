@@ -24,7 +24,7 @@ get_gene_tracks(
 \item{framed_tracks}{the name of rows which contain p-site data. Defaults to p_sites.}
 }
 \value{
-A GRangesList of all the genes requested
+An inspectorORF gene tracks object of all the genes requested
 }
 \description{
 Obtain tracks for a specific gene or genes from RiboTaper or ORFQuant results

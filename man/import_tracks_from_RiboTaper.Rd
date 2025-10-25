@@ -16,7 +16,9 @@ returns a GRanges object
 Imports RNA-Seq and P-Site reads from RiboTaper results
 }
 \examples{
+\dontrun{
 tracks <- inspectorORF::import_tracks_from_RiboTaper(
   c('Psit_Ribo_Rna_Cent_tracks_ccds', 'Psit_Ribo_Rna_Cent_tracks_nonccds')
 )
+}
 }

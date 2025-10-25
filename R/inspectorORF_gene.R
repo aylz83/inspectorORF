@@ -3,7 +3,7 @@
 #' @importClassesFrom rtracklayer TwoBitFile
 #'
 #' @slot tracks A GRanges object with track data.
-#' @slot track_ids A character vector of track IDs (typically either gene_ids or transcript_ids).
+#' @slot track_ids A character vector of gene_ids.
 #' @slot gtf A GRanges object representing a gene annotation (e.g., GTF).
 #' @slot genome_file A TwoBitFile representing the genome sequence.
 #' @slot framed_tracks A character vector of tracks marked as framed.
@@ -20,7 +20,7 @@ setClass(
     tracks = GRanges(),
     track_ids = c(),
     gtf = GRanges(),
-    genome_file = NULL,
+    genome_file = new("TwoBitFile"),
     framed_tracks = c()
   )
 )
@@ -42,9 +42,8 @@ setClass(
 #'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF")
 #' )
 #' @importFrom dplyr bind_rows distinct
-#' @importFrom GenomicRanges GRanges
+#' @importFrom methods as
 #' @importClassesFrom GenomicRanges GRanges
-#' @importFrom rtracklayer TwoBitFile
 #' @importClassesFrom rtracklayer TwoBitFile
 import_gene_bed <- function(bed_file, gtf_file, genome_file, framed_tracks = c("p_sites"))
 {
@@ -70,9 +69,9 @@ import_gene_bed <- function(bed_file, gtf_file, genome_file, framed_tracks = c("
     tracks = bed_tracks,
     track_ids = track_ids,
     gtf = gtf_data,
-    genome_file = TwoBitFile(genome_file),
+    genome_file = rtracklayer::TwoBitFile(genome_file),
     # read_names = read_names,
-    framed_tracks = framed_tracks,
+    framed_tracks = framed_tracks
     # extra_data = extra_data
   )
 }

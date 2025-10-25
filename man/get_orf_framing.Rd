@@ -9,7 +9,8 @@ get_orf_framing(
   orf_object = NULL,
   transcript_filter = NULL,
   start_position = NULL,
-  stop_position = NULL
+  stop_position = NULL,
+  stop_codons = c("UAG", "UAA", "UGA")
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ get_orf_framing(
 \item{start_position}{The start position to use for the ORF}
 
 \item{stop_position}{The stop position to use for the ORF (optional)}
+
+\item{stop_codons}{Which stop codons to consider end of the ORF sequence, defaults to UAG, UAA and UGA}
 }
 \value{
 a table consisting of summarised reads for each frame
@@ -35,10 +38,10 @@ tracks <- inspectorORF::import_transcript_bed(
   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
 )
-orf_aa_sequence <- inspectorORF::get_orf_framing(
+orf_framing <- inspectorORF::get_orf_framing(
   tracks,
   transcript_filter = "ENST00000343702.9",
   start_position = 456
 )
-orf_aa_sequence
+orf_framing
 }

@@ -9,7 +9,8 @@ get_orf_aa_seq(
   orf_object = NULL,
   transcript_filter,
   start_position = NULL,
-  stop_position = NULL
+  stop_position = NULL,
+  stop_codons = c("UAG", "UAA", "UGA")
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ get_orf_aa_seq(
 \item{start_position}{The start position to use for the ORF}
 
 \item{stop_position}{The stop position to use for the ORF (optional)}
+
+\item{stop_codons}{Which stop codons to consider end of the ORF sequence, defaults to UAG, UAA and UGA}
 }
 \value{
 An AAStringSet consisting of the ORF amino acid residues

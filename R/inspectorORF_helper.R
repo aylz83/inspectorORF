@@ -33,10 +33,16 @@
 }
 
 #' @importFrom plyranges filter
-.filter_gtf_df <- function(gtf_data, transcript_ids, attribute_column)
+.filter_gtf_df <- function(gtf_data, ids, attribute_column, track_type)
 {
-  transcript_filter <- paste(transcript_ids, collapse = "|")
-  gtf_data |> plyranges::filter(type == "exon" & grepl(transcript_filter, !!as.name(attribute_column)))
+  if (track_type == "gene_id")
+  {
+    filtered <- paste(ids, collapse = "|")
+    return (gtf_data |> plyranges::filter(type == "exon" & grepl(filtered, !!as.name(attribute_column))))
+  }
+  
+  filtered <- paste(ids, collapse = "|")
+  gtf_data |> plyranges::filter(type == "exon" & grepl(filtered, !!as.name(attribute_column)))
 }
 
 #' @importFrom plyranges select
@@ -73,7 +79,7 @@
 # ability of fread to use multiple cores
 #' @importFrom data.table fread
 #' @importClassesFrom GenomicRanges GRanges
-.import_gtf_hack <- function(gtf_file, transcripts_filter)
+.import_gtf_hack <- function(gtf_file, filter, track_type)
 {
   data.table::fread(
     gtf_file,
@@ -90,7 +96,7 @@
       "phase",
       "attributes"
     )
-  ) |> .filter_gtf_df(transcripts_filter, "attributes") |>
+  ) |> .filter_gtf_df(filter, "attributes", track_type) |>
     .process_gtf_table() |>
     .select_gtf_df() |>
     as("GRanges")
@@ -129,7 +135,7 @@
   }
   else
   {
-    gtf_data <- .import_gtf_hack(gtf_file, track_ids)
+    gtf_data <- .import_gtf_hack(gtf_file, track_ids, track_type)
   }
 
   gtf_data

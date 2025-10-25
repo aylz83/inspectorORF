@@ -7,9 +7,11 @@
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' tracks <- inspectorORF::import_tracks_from_RiboTaper(
 #'   c('Psit_Ribo_Rna_Cent_tracks_ccds', 'Psit_Ribo_Rna_Cent_tracks_nonccds')
 #' )
+#' }
 #' @importFrom dplyr slice mutate row_number group_by distinct
 #' @importFrom tidyr separate_longer_delim
 #' @importClassesFrom GenomicRanges GRanges
@@ -210,7 +212,7 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
 #' @param gene_ids the gene ids of interest
 #' @param framed_tracks the name of rows which contain p-site data. Defaults to p_sites.
 #'
-#' @return A GRangesList of all the genes requested
+#' @return An inspectorORF gene tracks object of all the genes requested
 #' @export
 #'
 #' @examples
@@ -232,7 +234,7 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
 #'
 #' @importFrom plyranges join_overlap_inner_within_directed
 #' @importFrom tidyr pivot_longer
-#' @importFrom methods as
+#' @importFrom methods as new
 #' @importFrom dplyr select arrange desc
 #' @importFrom GenomicRanges split mcols
 #' @importClassesFrom IRanges IRanges
@@ -250,7 +252,7 @@ get_gene_tracks <- function(tracks,
   tracks_list <- plyranges::join_overlap_inner_within_directed(tracks, gene_info, maxgap = -1L, minoverlap = 0L)
   tracks_list <- split(tracks_list, tracks_list$gene_id)
 
-  lapply(tracks_list, function(new_tracks)
+  tracks <- lapply(tracks_list, function(new_tracks)
   {
     gene_tracks <- new_tracks |> as.data.frame() |>
       dplyr::select(-c(setdiff(colnames(GenomicRanges::mcols(gene_info)), "gene_id")))
@@ -280,6 +282,15 @@ get_gene_tracks <- function(tracks,
 
     ucsc_data
   }) |> as("GRangesList")
+
+  new(
+    "inspectorORF_gtracks",
+    tracks = unlist(tracks, use.names = FALSE),
+    track_ids = names(tracks),
+    gtf = gene_info,
+    genome_file = rtracklayer::TwoBitFile(genome_file),
+    framed_tracks = framed_tracks
+  )
 }
 
 #' Obtain track information for one or more transcripts from RiboTaper/ORFquant results
@@ -310,8 +321,9 @@ get_gene_tracks <- function(tracks,
 #' )
 #' @importFrom dplyr arrange mutate ungroup group_by left_join n desc
 #' @importFrom plyranges join_overlap_inner_within_directed
+#' @importFrom methods as
 #' @importClassesFrom GenomicRanges GRanges GRangesList
-#' @importClassesFrom rtracklayer UCSCData
+#' @importClassesFrom rtracklayer UCSCData TwoBitFile
 get_transcript_tracks <- function(tracks,
                                   gtf_file,
                                   genome_file,
@@ -375,7 +387,7 @@ get_transcript_tracks <- function(tracks,
     ucsc_data
   }) |> as("GRangesList")
 
-  sequences <- .obtain_sequences(exon_info, TwoBitFile(genome_file))
+  sequences <- .obtain_sequences(exon_info, rtracklayer::TwoBitFile(genome_file))
 
   # tracks <- .get_tracks(tracks, exon_info, read_names_count, framed_tracks)
 

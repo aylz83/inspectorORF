@@ -432,7 +432,7 @@ orf_plot <- function(transcript_tracks,
 #' )
 #' inspectorORF::get_orf_nt_seq(
 #'   tracks,
-#'   test_orfs[[1]]
+#'   test_orfs@orfs[[1]]
 #' )
 #' @export
 #' @importClassesFrom Biostrings RNAStringSet
@@ -481,6 +481,7 @@ get_orf_nt_seq <- function(transcript_tracks,
 #' @param transcript_filter A character vector consisting of your transcript ID of interest
 #' @param start_position The start position to use for the ORF
 #' @param stop_position The stop position to use for the ORF (optional)
+#' @param stop_codons Which stop codons to consider end of the ORF sequence, defaults to UAG, UAA and UGA
 #' @return An AAStringSet consisting of the ORF amino acid residues
 #' @examples
 #' tracks <- inspectorORF::import_transcript_bed(
@@ -501,7 +502,8 @@ get_orf_aa_seq <- function(transcript_tracks,
                            orf_object = NULL,
                            transcript_filter,
                            start_position = NULL,
-                           stop_position = NULL)
+                           stop_position = NULL,
+                           stop_codons = c("UAG", "UAA", "UGA"))
 {
   bioseq::seq_translate(
     bioseq::as_rna(
@@ -511,7 +513,8 @@ get_orf_aa_seq <- function(transcript_tracks,
           orf_object,
           transcript_filter,
           start_position,
-          stop_position
+          stop_position,
+          stop_codons
         )
       )
     )
@@ -526,6 +529,7 @@ get_orf_aa_seq <- function(transcript_tracks,
 #' @param transcript_filter A character vector consisting of your transcript ID of interest
 #' @param start_position The start position to use for the ORF
 #' @param stop_position The stop position to use for the ORF (optional)
+#' @param stop_codons Which stop codons to consider end of the ORF sequence, defaults to UAG, UAA and UGA
 #' @return a table consisting of summarised reads for each frame
 #' @examples
 #' tracks <- inspectorORF::import_transcript_bed(
@@ -533,19 +537,20 @@ get_orf_aa_seq <- function(transcript_tracks,
 #'   gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
 #'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
 #' )
-#' orf_aa_sequence <- inspectorORF::get_orf_framing(
+#' orf_framing <- inspectorORF::get_orf_framing(
 #'   tracks,
 #'   transcript_filter = "ENST00000343702.9",
 #'   start_position = 456
 #' )
-#' orf_aa_sequence
+#' orf_framing
 #' @export
 #' @importFrom dplyr filter summarise group_by
 get_orf_framing <- function(transcript_tracks,
                             orf_object = NULL,
                             transcript_filter = NULL,
                             start_position = NULL,
-                            stop_position = NULL)
+                            stop_position = NULL,
+                            stop_codons = c("UAG", "UAA", "UGA"))
 {
   # .check_valid_input(orf_object, start_position)
 
@@ -563,7 +568,7 @@ get_orf_framing <- function(transcript_tracks,
 
   if (is.null(stop_position))
   {
-    stop_position <- .get_stop_from_start(transcript_tracks, transcript_filter, start_position)
+    stop_position <- .get_stop_from_start(transcript_tracks, transcript_filter, start_position, stop_codons)
   }
 
   transcript_tracks@tracks[[transcript_filter]] |>
