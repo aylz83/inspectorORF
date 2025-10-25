@@ -40,9 +40,8 @@ devtools::install_github("aylz83/inspectorORF")
 ##  Dependencies
 
  - S4Vectors
- - stringr,
- - tibble,
- - tidyr,
+ - tibble
+ - tidyr
  - bioseq
  - plyranges
  - Biostrings
@@ -57,18 +56,8 @@ devtools::install_github("aylz83/inspectorORF")
  - parallel
  - dplyr
  - methods
-
-## Optional dependencies for interactive plots
-
- - plotly
-
-## Optional dependencies for the shiny interface
-
- - shiny
- - reactable
- - shinyFiles
- - shinycssloaders
- - shinydashboard
+ - stats
+ - grid
 
 ## Example Data
 
