@@ -1,0 +1,21 @@
+%files
+    ../inspectorORF /usr/local/src/inspectorORF
+    nginx.conf /etc/nginx/conf.d/default.conf
+
+%post
+    apt-get update && apt-get install -y \
+        r-base nginx libcurl4-openssl-dev libssl-dev libxml2-dev \
+        libxt-dev libpng-dev libjpeg-dev
+
+    # Install Bioconductor and CRAN deps
+    R -e "install.packages(c('BiocManager','devtools'), repos='https://cloud.r-project.org')"
+    R -e "BiocManager::install(update=TRUE, ask=FALSE)"
+    R -e "devtools::install('/usr/local/src/inspectorORF', dependencies=TRUE)"
+
+%runscript
+# Start Nginx in the background
+nginx &
+
+# Run your Shiny app
+R -e "inspectorORF::run_inspectorORF(host='0.0.0.0', port=3838, launch_browser=FALSE)"
+

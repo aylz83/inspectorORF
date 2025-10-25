@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   inspectororf:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: inspectororf
     expose:
       - "3838"
@@ -11,7 +13,7 @@ services:
     image: nginx:latest
     container_name: nginx
     ports:
-      - "80:80"
+      - "8080:80"
       # - "443:443"  # enable later for HTTPS
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
