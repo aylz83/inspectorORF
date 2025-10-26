@@ -267,6 +267,7 @@ transcript_plot <- function(
   plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
   scale_to_psites = F,
   plot_transcript_summary = F,
+  add_introns = F,
   codon_queries = NULL,
   condition_names = c("rna_reads" = ""),
   plot_read_pairs = c("p_sites" = "rna_reads"),
@@ -295,6 +296,7 @@ transcript_plot <- function(
     interactive,
     legend_position,
     text_size,
+    add_introns,
     .tx_plot = T
   )
 }

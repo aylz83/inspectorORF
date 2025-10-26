@@ -378,7 +378,7 @@
   return(NULL)
 }
 
-#' @importFrom ggplot2 ggplot geom_bar aes scale_color_manual coord_cartesian xlab ylab theme_minimal theme facet_grid geom_blank scale_y_continuous
+#' @importFrom ggplot2 ggplot geom_bar aes scale_color_manual coord_cartesian xlab ylab theme_minimal theme facet_grid geom_blank scale_y_continuous labeller
 #' @importFrom ggrepel geom_text_repel
 #' @importFrom ggh4x facetted_pos_scales
 #' @importFrom grid unit arrow
@@ -844,6 +844,7 @@
   interactive,
   legend_position,
   text_size,
+  add_introns,
   .tx_plot,
   stop_codons = c("UAG", "UAA", "UGA")
 )
