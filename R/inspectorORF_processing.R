@@ -80,7 +80,7 @@ import_tracks_from_RiboTaper <- function(...)
 #'     "example_data", "control_psites_for_ORFquant", package = "inspectorORF"
 #'   )
 #' )
-#' 
+#'
 #' # Creating a tracks object with multiple conditions
 #' # with the control under the regular rna_reads/orfquant_psites and an additional treated label
 #' tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
@@ -341,7 +341,7 @@ get_gene_tracks <- function(tracks,
 
   new(
     "inspectorORF_gtracks",
-    tracks = unlist(tracks, use.names = FALSE),
+    tracks = tracks,
     track_ids = names(tracks),
     gtf = gene_info,
     genome_file = rtracklayer::TwoBitFile(genome_file),
@@ -378,6 +378,7 @@ get_gene_tracks <- function(tracks,
 #' @importFrom dplyr arrange mutate ungroup group_by left_join n desc
 #' @importFrom plyranges join_overlap_inner_within_directed
 #' @importFrom methods as
+#' @importFrom GenomicRanges mcols
 #' @importClassesFrom GenomicRanges GRanges GRangesList
 #' @importClassesFrom rtracklayer UCSCData TwoBitFile
 get_transcript_tracks <- function(tracks,
@@ -391,7 +392,7 @@ get_transcript_tracks <- function(tracks,
 
   # exon_info <- gtf_annotation |> plyranges::filter(type == "exon" & transcript_id %in% unique(transcript_ids))
 
-  read_names_count <- mcols(tracks) |> colnames() |> unique() |> length()
+  read_names_count <- GenomicRanges::mcols(tracks) |> colnames() |> unique() |> length()
 
   tracks_list <- plyranges::join_overlap_inner_within_directed(tracks, exon_info, maxgap = -1L, minoverlap = 0L)
   tracks_list <- split(tracks_list, tracks_list$transcript_id)
@@ -399,7 +400,7 @@ get_transcript_tracks <- function(tracks,
   tracks <- lapply(tracks_list, function(new_tracks)
   {
     transcript_tracks <- new_tracks |> as.data.frame() |>
-      dplyr::select(-c(setdiff(colnames(mcols(exon_info)), "transcript_id")))
+      dplyr::select(-c(setdiff(colnames(mcols(exon_info)), c("transcript_id", "exon_number"))))
 
     if (transcript_tracks$strand[[1]] == "-")
     {
@@ -410,14 +411,14 @@ get_transcript_tracks <- function(tracks,
       transcript_tracks <- transcript_tracks |> dplyr::arrange(start)
     }
 
-    score_names <- colnames(mcols(tracks))
+    score_names <- colnames(GenomicRanges::mcols(tracks))
 
     if (!is.null(additional_info))
     {
       read_names_count = read_names_count + length(setdiff(colnames(additional_info), c("transcript_id", "position")))
       score_names <- c(score_names, setdiff(colnames(additional_info), c("transcript_id", "position")))
       transcript_tracks <- transcript_tracks |> dplyr::group_by(transcript_id) |>
-        dplyr::mutate(position = row_number()) |>
+        dplyr::mutate(position = dplyr::row_number()) |>
         dplyr::ungroup() |>
         dplyr::left_join(additional_info,
                          by = c("transcript_id", "position")) |>

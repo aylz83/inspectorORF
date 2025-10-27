@@ -52,12 +52,14 @@ devtools::install_github("aylz83/inspectorORF")
  - ggrepel
  - grid
  - patchwork
- - rtracklayer 
+ - rtracklayer
  - parallel
  - dplyr
  - methods
  - stats
  - grid
+
+ - R.utils is also required for opening gzip compressed bed files.
 
 ## Optional dependencies for interactive plots
 

@@ -21,7 +21,8 @@ Suggests:
     reactable,
     shinyFiles,
     shinycssloaders,
-    shinydashboard
+    shinydashboard,
+    R.utils
 Config/testthat/edition: 3
 Imports:
     S4Vectors,

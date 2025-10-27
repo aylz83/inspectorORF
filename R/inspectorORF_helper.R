@@ -357,8 +357,9 @@
       # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
       # is_exon = T
     ) |>
+    dplyr::arrange(ifelse(strand == "-", dplyr::desc(start), xtfrm(start))) |>
     dplyr::ungroup() |>
-    dplyr::select(seqnames, start, end, strand, transcript_id, name, score, exon_position, og_framing, framing) |>
+    dplyr::select(seqnames, start, end, strand, transcript_id, name, score, exon_position, exon_number, og_framing, framing) |>
     as("GRanges")
 
   split(tracks, tracks$transcript_id) |> as("GRangesList")
@@ -867,7 +868,7 @@
   interactive,
   legend_position,
   text_size,
-  add_introns,
+  split_exons,
   .tx_plot,
   stop_codons = c("UAG", "UAA", "UGA")
 )
@@ -892,8 +893,6 @@
       stop(paste("Error!", transcript_filter, "not found within the BED data"))
     }
   }
-
-  orf_or_region <- ifelse(.tx_plot == T, "Region", "ORF")
 
   # if orf details were not supplied and only a start codon was given, find the next stop position
   if (!is.null(start_position) & is.null(stop_position))
@@ -967,16 +966,26 @@
 
   if (.tx_plot & no_orf)
   {
-    if (add_introns)
+    if (split_exons)
     {
+      track_to_plot <- track_to_plot |> dplyr::mutate(track_group = factor(exon_number, levels = sort(unique(exon_number))))
+
+      region_labels <- setNames(
+        rep("", length(unique(track_to_plot$track_group))),
+        unique(track_to_plot$track_group)
+      )
     }
     else
     {
+      region_labels <- c("5_UTR" = "5'", "Region" = "Region", "3_UTR" = "3'")
+
       track_to_plot <- track_to_plot |> dplyr::mutate(track_group = "Transcript")
     }
   }
   else
   {
+    region_labels <- c("5_UTR" = "5'", "ORF" = "ORF", "3_UTR" = "3'")
+
     track_to_plot <- track_to_plot |> dplyr::mutate(
       track_group = factor(
         dplyr::case_when(
@@ -1016,8 +1025,6 @@
   }
 
   # print(track_to_plot)
-
-  region_labels <- c("5_UTR" = "5'", orf_or_region = orf_or_region, "3_UTR" = "3'")
 
   plot_labels <- dataset_names[!(names(dataset_names) %in% filtered_framed_tracks)]
   plot_labels[names(plot_labels)] <- ifelse(

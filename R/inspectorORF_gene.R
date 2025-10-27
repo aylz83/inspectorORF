@@ -73,3 +73,130 @@ import_gene_bed <- function(bed_file, gtf_file, genome_file, framed_tracks = c("
   )
 }
 
+.gene_plot <- function(
+  gene_tracks,
+  gene_filter,
+  transcript_filter = NULL,
+  orf_object = NULL,
+  orf_start = NULL,
+  orf_end = NULL,
+  plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
+  scale_to_psites = F,
+  plot_transcript_summary = F,
+  shrink_introns = F,
+  codon_queries = NULL,
+  condition_names = c("rna_reads" = ""),
+  plot_read_pairs = c("p_sites" = "rna_reads"),
+  dataset_names = c("rna_reads" = "RNA-Seq Reads", "p_sites" = "P-Sites"),
+  one_plot = T,
+  interactive = F,
+  legend_position = "bottom",
+  text_size = 12
+)
+{
+	track_to_plot <- gene_tracks@tracks[[gene_filter]] |>
+		as.data.frame() |>
+		dplyr::distinct(seqnames, start, end, strand, name, score, .keep_all = TRUE)
+
+	read_names_count <- track_to_plot$name |> unique() |> length()
+
+	track_to_plot <- track_to_plot |>
+		dplyr::mutate(framing = as.factor(ifelse(name %in% gene_tracks@framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name)))
+
+	p_sites <- track_to_plot |> dplyr::select(seqnames, start, end, strand, name, score, framing) |>
+		dplyr::filter(name %in% names(plot_read_pairs)) |>
+		dplyr::rename(p_sites = score,
+					  p_site_framing = framing) |>
+		dplyr::arrange(match(name, names(plot_read_pairs))) |>
+		dplyr::mutate(name = rep(plot_read_pairs, each = length(name) / length(plot_read_pairs)))
+
+	# print(track_to_plot)
+	track_to_plot <- track_to_plot |> dplyr::left_join(p_sites, by = c("seqnames", "start", "end", "strand", "name")) |>
+		dplyr::filter(!(name %in% names(plot_read_pairs)))
+
+	filtered_framed_tracks <- intersect(gene_tracks@framed_tracks, names(plot_read_pairs))
+
+	plot_labels <- dataset_names[!(names(dataset_names) %in% filtered_framed_tracks)]
+	plot_labels[names(plot_labels)] <- ifelse(
+		names(plot_labels) %in% names(condition_names) & condition_names[names(plot_labels)] != "",
+		paste0(condition_names[names(plot_labels)], "\n", dataset_names[names(plot_labels)]),
+		paste0(dataset_names[names(plot_labels)])
+	)
+
+	plot_labels[plot_read_pairs] <- paste0(plot_labels[plot_read_pairs], "\n+", dataset_names[names(plot_read_pairs)])
+
+	legend_labels <- sapply(names(plot_colours), function(nm)
+	{
+		dataset_label <- if (!is.null(dataset_names) && nm %in% names(dataset_names))
+		{
+			dataset_names[[nm]]
+		}
+		else
+		{
+			nm
+		}
+
+		label <- if (!is.null(condition_names) && nm %in% names(condition_names) && condition_names[[nm]] != "")
+		{
+			paste0(condition_names[[nm]], "\n", dataset_label)
+		}
+		else
+		{
+			dataset_label
+		}
+
+		if (nm %in% c("0", "1", "2"))
+		{
+			paste("Frame", nm)
+		}
+		else
+		{
+			label
+		}
+	}, USE.NAMES = TRUE)
+
+	plot_result <- ggplot(
+		track_to_plot,
+		aes(y = score,
+			x = start,
+			colour = framing,
+			fill = framing)
+	) +
+		geom_bar(stat = "identity", na.rm = TRUE) +
+		geom_bar(
+			aes(x = start,
+				y = p_sites,
+				colour = p_site_framing,
+				fill = p_site_framing),
+			stat = "identity",
+			na.rm = TRUE
+		) +
+		scale_color_manual(
+			values = plot_colours,
+			aesthetics = c("fill", "colour"),
+			labels = legend_labels
+		) +
+		scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
+		coord_cartesian(expand = FALSE) +
+		xlab("Position") +
+		ylab(NULL) +
+		theme_minimal() +
+		theme(
+			legend.position = legend_position,
+			legend.title = element_blank(),
+			panel.spacing = grid::unit(10, "pt"),
+			# panel.border = element_rect(colour = "black", fill = NA, linewidth = .5),
+			panel.background = element_blank(),
+			# axis.line = element_line(colour = "black"),
+			# axis.title.y = element_text(color = "grey30"),
+			panel.grid.major.x = element_blank(),
+			panel.grid.minor.x = element_blank(),
+			strip.background.y = element_blank(),
+			strip.placement = "left",
+			# strip.text = element_text(size = 12),
+			strip.text.y.left = element_text(angle = 0),
+			axis.ticks.length = grid::unit(0, "points"),
+			text = element_text(size = text_size),
+			axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
+		)
+}

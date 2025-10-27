@@ -431,7 +431,7 @@ orf_plot <- function(
     interactive,
     legend_position,
     text_size,
-    add_introns = F,
+    split_exons = F,
     .tx_plot = F
   )
 }

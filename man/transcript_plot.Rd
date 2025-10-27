@@ -14,6 +14,7 @@ transcript_plot(
     "#FEE725"),
   scale_to_psites = F,
   plot_transcript_summary = F,
+  split_exons = F,
   codon_queries = NULL,
   condition_names = c(rna_reads = ""),
   plot_read_pairs = c(p_sites = "rna_reads"),
@@ -40,6 +41,8 @@ transcript_plot(
 \item{scale_to_psites}{Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this}
 
 \item{plot_transcript_summary}{Should the remaining P-sites for the full transcript (excluding those in the ORF) be plot}
+
+\item{split_exons}{separate regions by exon - not compatible with adding ORF regions}
 
 \item{codon_queries}{an optional list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot}
 

@@ -116,7 +116,6 @@ Data from ORFquant can also be utilised. RNA-Seq coverage previously calculated 
 
 All example data has been processed from GEO accession [GSE16214](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE16214), aligned to Gencode V44 and subset for the NTN4 gene.
 
-
 ```{r basic_orfquant_usage}
 tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
 	rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
