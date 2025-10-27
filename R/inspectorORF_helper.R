@@ -188,7 +188,7 @@
 }
 
 #' @importFrom data.table fread
-.import_bed_hack <- function(bed_file)
+.import_bed_hack <- function(bed_file, as_ranges = FALSE)
 {
   big_data <- .read_big_text(bed_file)
   track_positions <- which(grepl("^track name=", big_data))
@@ -196,14 +196,30 @@
 
   track_pairs <- sort(c(track_positions[-c(1)] - 1, (track_positions + 1), length(big_data)))
 
-  setNames(lapply(seq(from = 1, to = length(track_pairs / 2), by = 2), function(at)
+  results <- setNames(lapply(seq(from = 1, to = length(track_pairs / 2), by = 2), function(at)
   {
-    data.table::fread(text = big_data[track_pairs[at]:track_pairs[at + 1]],
+    data <- data.table::fread(text = big_data[track_pairs[at]:track_pairs[at + 1]],
           col.names = c("seqnames", "start", "end", "name", "score", "strand")) |>
       dplyr::mutate(start = start + 1)# |>
-    # as("GRanges")
-  }), track_names) # |>
-  # as("GRangesList")
+
+    if (as_ranges == TRUE)
+    {
+      data |> as("GRanges")
+    }
+    else
+    {
+      data
+    }
+  }), track_names)
+
+  if (as_ranges)
+  {
+    results |> as("GRangesList")
+  }
+  else
+  {
+    results
+  }
 }
 
 #' @importFrom dplyr mutate distinct select rename rename_with group_by ungroup

@@ -46,11 +46,9 @@ setClass(
 #' @importClassesFrom rtracklayer TwoBitFile
 import_gene_bed <- function(bed_file, gtf_file, genome_file, framed_tracks = c("p_sites"))
 {
-  bed_tracks <- .import_bed_hack(bed_file)
+  bed_tracks <- .import_bed_hack(bed_file, as_ranges = TRUE)
 
   track_ids <- names(bed_tracks)
-
-  bed_tracks <- dplyr::bind_rows(bed_tracks) |> dplyr::distinct() |> as("GRanges")
 
   gtf_data <- .import_gtf(gtf_file, track_ids, track_type = "gene_id")
 
@@ -74,5 +72,4 @@ import_gene_bed <- function(bed_file, gtf_file, genome_file, framed_tracks = c("
     # extra_data = extra_data
   )
 }
-
 
