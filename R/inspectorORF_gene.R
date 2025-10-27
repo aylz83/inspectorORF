@@ -1,5 +1,4 @@
-#' @importFrom GenomicRanges GRanges
-#' @importClassesFrom GenomicRanges GRanges
+#' @importClassesFrom GenomicRanges GRanges GRangesList
 #' @importClassesFrom rtracklayer TwoBitFile
 #'
 #' @slot tracks A GRanges object with track data.
@@ -10,14 +9,14 @@
 setClass(
   "inspectorORF_gtracks",
   slots = c(
-    tracks = "GRanges",
+    tracks = "GRangesList",
     track_ids = "vector",
     gtf = "GRanges",
     genome_file = "TwoBitFile",
     framed_tracks = "vector"
   ),
   prototype = list(
-    tracks = GRanges(),
+    tracks = GRangesList(),
     track_ids = c(),
     gtf = GRanges(),
     genome_file = new("TwoBitFile"),
@@ -75,3 +74,5 @@ import_gene_bed <- function(bed_file, gtf_file, genome_file, framed_tracks = c("
     # extra_data = extra_data
   )
 }
+
+

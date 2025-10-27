@@ -202,13 +202,15 @@ gene_to_transcript_tracks <- function(
     stop("No supplied transcripts were found within the gene tracks.")
   }
 
+  tracks <- unlist(gene_tracks@tracks, use.names = FALSE)
+
   transcript_ids <- gtf_subset$transcript_id |> unique()
 
   sequences <- .obtain_sequences(gtf_subset, gene_tracks@genome_file)
 
-  read_names_count <- gene_tracks@tracks$name |> unique() |> length()
+  read_names_count <- tracks$name |> unique() |> length()
 
-  tracks <- .get_tracks(gene_tracks@tracks, gtf_subset, read_names_count, gene_tracks@framed_tracks)
+  tracks <- .get_tracks(tracks, gtf_subset, read_names_count, gene_tracks@framed_tracks)
 
   new("inspectorORF_txtracks",
       transcript_ids = transcript_ids,
@@ -229,6 +231,7 @@ gene_to_transcript_tracks <- function(
 #' @param plot_colours The colour scheme for frame 0, 1 and 2 (optional).
 #' @param scale_to_psites Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this
 #' @param plot_transcript_summary Should the remaining P-sites for the full transcript (excluding those in the ORF) be plot
+#' @param add_introns add intron regions to the plot
 #' @param codon_queries an optional list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot
 #' @param condition_names Names of any datasets to plot, useful when plotting bed file which consists of reads from multiple datasets
 #' @param plot_read_pairs Which RNA-Seq reads are associated with which P-Site reads. See example for further info
