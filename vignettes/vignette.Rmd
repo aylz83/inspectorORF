@@ -28,12 +28,15 @@ knitr::opts_chunk$set(
 
 Detecting translated open reading frames (ORFs) within Ribo-Seq data often requires evaluating the reads within your captured ORFs to determine if typical properties of translation, such as triplet periodicity are present. inspectorORF aims to simplify the task of plotting ORFs, with the following features:
 
--   Plotting of ORFs consisting of RNA-Seq coverage and P-sites calculated from Ribo-Seq.
--   Plotting the same ORFs for multiple conditions to evaluate the reads in a control vs treated condition, or multiple replicates.
--   Including additional custom information within plots such as (but not limited to) mass-spec fragment hits, Kozak scores, TE etc.
--   Plotting of 5'/3' UTRs.
--   Annotating codons of interest such as non-canonical or up/downstream start codons.
--   Easy extraction of both the nucleotide and amino-acid sequence from the ORFs
+ - Plotting of ORFs consisting of RNA-Seq coverage and P-sites calculated from Ribo-Seq.
+ - Plotting the same ORFs for multiple conditions to evaluate the reads in a control vs treated condition, or multiple replicates.
+ - Including additional custom information within plots such as (but not limited to) mass-spec fragment hits, Kozak scores, TE etc.
+ - Plotting of 5'/3' UTRs.
+ - Plotting of individual exons
+ - Plotting of exons and introns (if intronic data is available)
+ - Annotating codons of interest such as non-canonical or up/downstream start codons, including in-frame stop codons
+ - Generation of interactive plots.
+ - Easy extraction of both the nucleotide and amino-acid sequence from the ORFs
 
 ## Standard workflow
 
@@ -165,7 +168,8 @@ gene_tracks <- inspectorORF::get_gene_tracks(
 	tracks,
 	gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
 	genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
-	gene_ids = c("ENSG00000074527.13")
+	gene_ids = c("ENSG00000074527.13"),
+	framed_tracks = c("p_sites", "treated_psites") # required when multiple ORFquant data us provided
 )
 
 # Obtain tracks for specific transcript variants of the NTN4 gene.
@@ -210,9 +214,19 @@ inspectorORF::transcript_plot(
 )
 ```
 
+Exons making up a transcript can also be plot by splitting the figure into exons with the `split_exons = TRUE` option -
+
+```{r exons_tx_plot, fig.width = 8, fig.height = 4}
+inspectorORF::transcript_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9", # Requires 1 transcript at a time
+	split_exons = TRUE
+)
+```
+
 As can be seen in the above plot, although both RNA-Seq reads and P-Sites are found across the transcript, such reads are limited and fairly low, suggesting any coding sequences found within this transcript to not be translated. The original ORFquant results for this dataset also reflect this, with no coding sequence within ENST00000343702.9 being flagged as translated.
 
-The annotated coding sequence within ENST00000343702.9 to get a better understanding the P-Site reads we do have, to see if they are primarily within the coding sequence. This can be undertaken by highlighting a region of interest by specifying a `start_position` and `stop_position`.
+The annotated coding sequence within ENST00000343702.9 can be plot to get a better understanding the P-Site reads we do have, to see if they are primarily within the coding sequence. This can be undertaken by highlighting a region of interest by specifying a `start_position` and `stop_position`.
 
 **Please note, no checks will be performed if start_position and stop_position are true start and stop codons, or if they're within the same frame. Plots will be given regardless.**
 
@@ -251,6 +265,52 @@ inspectorORF::transcript_plot(
 	stop_position = 2339,
 	scale_to_psites = T,
 	plot_transcript_summary = T
+)
+```
+
+### Retaining reads within introns for plotting
+
+During gene or transcript track generation, reads within introns can be retained with the `keep_introns = TRUE` to enable plotting intronic reads later -
+
+```{r intron_read_retention}
+my_tracks <- inspectorORF::merge_RNA_tracks_with_ORFquant(
+	rna_reads = system.file("example_data", "control_rna_tracks.bed.gz", package = "inspectorORF"),
+	orfquant_psites = system.file("example_data", "control_psites_for_ORFquant", package = "inspectorORF")
+)
+
+gene_tracks <- inspectorORF::get_gene_tracks(
+	my_tracks,
+	gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+	genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+	keep_introns = TRUE,
+	gene_ids = c("ENSG00000074527.13")
+)
+
+# Any track generation from gene tracks will therefore contain intronic reads
+tx_from_gene_tracks <- inspectorORF::gene_to_transcript_tracks(
+	gene_tracks,
+	transcript_filter = c("ENST00000343702.9") # multiple transcript ids supported
+)
+
+# Or, with get_transcript_tracks directly
+
+my_tx_tracks <- inspectorORF::get_transcript_tracks(
+	my_tracks,
+	gtf_file = system.file("example_data", "annotation_subset.gtf", package = "inspectorORF"),
+	genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
+	transcript_ids = c("ENST00000343702.9"), # multiple transcript ids supported
+	keep_introns = TRUE,
+	framed_tracks = c("p_sites") # required when multiple ORFquant data us provided
+)
+```
+
+Including and annotating introns within a plot can then be performed by setting the `split_exons` parameter of transcript_plot to "with_introns" -
+
+```{r intron_read_retention_plot, fig.width = 8, fig.height = 4}
+inspectorORF::transcript_plot(
+	my_tx_tracks,
+	transcript_filter = "ENST00000343702.9", # Requires 1 transcript at a time
+	split_exons = "with_introns"
 )
 ```
 
@@ -519,6 +579,80 @@ inspectorORF::orf_plot(
 	codon_queries = list(
 		inspectorORF::codon_query(annotate_start = T, colour = "black"),
 		inspectorORF::codon_query(annotation_codons = c("AUG"), in_frame = T, colour = "darkred")
+	)
+)
+```
+
+When annotating codons, stop codons can also be included with `annotate_stop = TRUE`. This can be particularly useful when annotating in-frame start codons across the transcript to indicate alternative ORFs which are possibly translated.
+
+```{r orf_plot_annotate_stop_codons, fig.width = 10, fig.height = 8}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725"),
+	codon_queries = list(
+		inspectorORF::codon_query(in_frame = T, annotate_stop = T, colour = "darkred")
+	)
+)
+```
+
+By default, `annotate_stop = TRUE` will search for all three possible stop codons (UAA, UAG and UGA). `annotate_stop` also accepts a character vector to search for specific stop codons instead -
+
+```{r orf_plot_annotate_specific_stop_codons, fig.width = 10, fig.height = 8}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725"),
+	codon_queries = list(
+		inspectorORF::codon_query(in_frame = T, annotate_stop = c("UAG"), colour = "darkred")
 	)
 )
 ```

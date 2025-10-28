@@ -19,7 +19,7 @@ codon_query(
 
 \item{in_frame}{a logical indicating if the annotation_codons should be in frame to the ORF or not}
 
-\item{annotate_stop}{if true and one of annotation_codons or annotate_start is included along with in_frame = TRUE, stop codons will also be annotated. Can be logical value to plot all three stop codons, or vector of strings to specify codons.}
+\item{annotate_stop}{if true will look for stop codons, or can be vector of strings to specify codons.}
 
 \item{colour}{a string consisting of the colour to plot the annotated codons in}
 }

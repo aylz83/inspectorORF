@@ -555,7 +555,7 @@
 
   row_sizes <- c(rep(0.5, full_size_plots), rep(0.15, half_size_plots))
 
-  if (!is.null(codon_queries))
+  if (!is.null(codon_queries) && nrow(codon_queries) > 0)
   {
     # Compute minimum spacing between sorted exon positions
     codon_positions <- sort(codon_queries$exon_position)
@@ -643,6 +643,9 @@
     (which(found) * 3) + frame - 3
   }, simplify = F) |> unlist() |> sort()
 
+  if (length(codons_to_plot) == 0)
+    return(NULL)
+
   codons_to_plot <- data.frame(
     codon = names(codons_to_plot),
     exon_position = codons_to_plot,
@@ -678,14 +681,38 @@
 {
   if (is.null(codon_queries) | no_orf == T)
   {
-    return(NULL)
+    return(data.frame())
   }
 
   annotations <- lapply(codon_queries, function(query)
   {
-    stops_to_search = NULL
-
-    if (query$annotate_start == T)
+    codons_to_plot <- NULL
+  
+    if (is.logical(query$annotate_stop) && query$annotate_stop == T)
+    {
+      codons_to_plot <- .search_for_codons(
+        sequence,
+        c("UAA", "UAG", "UGA"),
+        original_start,
+        start_position,
+        stop_position,
+        in_frame = query$in_frame,
+        is_start = F
+      )
+    }
+    else if (is.character(query$annotate_stop))
+    {
+      codons_to_plot <- .search_for_codons(
+        sequence,
+        query$annotate_stop,
+        original_start,
+        start_position,
+        stop_position,
+        in_frame = query$in_frame,
+        is_start = F
+      )
+    }
+    else if (query$annotate_start == T)
     {
       # Create positional information for the ORFs start codon
       start_codon <- substr(sequence, start = original_start, stop = original_start + 2)
@@ -695,15 +722,6 @@
         name = "annotated_start_codons",
         is_start = T
       )
-
-      if (is.logical(query$annotate_stop) && query$annotate_stop == T)
-      {
-        stops_to_search <- c("UAA", "UAG", "UGA")
-      }
-      else if (is.character(query$annotate_stop))
-      {
-        stops_to_search <- query$annotate_stop
-      }
     }
     else if (!is.null(query$annotation_codons))
     {
@@ -716,54 +734,39 @@
         in_frame = query$in_frame,
         is_start = T
       )
+    }
 
-      if (query$in_frame == T)
+    if (!is.null(codons_to_plot) && nrow(codons_to_plot) > 0)
+    {
+      if (!is.null(query$colour) && query$colour == "use_framing")
       {
-        if (is.logical(query$annotate_stop) && query$annotate_stop == T)
-        {
-          stops_to_search <- c("UAA", "UAG", "UGA")
-        }
-        else if (is.character(query$annotate_stop))
-        {
-          stops_to_search <- query$annotate_stop
-        }
+        codons_to_plot$colour = plot_colours[as.character(codons_to_plot$p_site_framing)]
+      }
+      else if (!is.null(query$colour))
+      {
+        codons_to_plot$colour = query$colour
+      }
+      else
+      {
+        codons_to_plot$colour = "black"
       }
     }
 
-    if (!is.null(stops_to_search))
-    {
-      stop_codons_to_plot <- .search_for_codons(
-        sequence,
-        stops_to_search,
-        original_start,
-        start_position,
-        stop_position,
-        in_frame = T,
-        is_start = F
-      )
-
-      codons_to_plot <- dplyr::bind_rows(codons_to_plot, stop_codons_to_plot)
-    }
-
-    if (!is.null(query$colour) && query$colour == "use_framing")
-    {
-      codons_to_plot$colour = plot_colours[as.character(codons_to_plot$p_site_framing)]
-    }
-    else if (!is.null(query$colour))
-    {
-      codons_to_plot$colour = query$colour
-    }
-    else
-    {
-      codons_to_plot$colour = "black"
-    }
-
     codons_to_plot
-  }) |> dplyr::bind_rows() |>
+  })
+
+  if (length(annotations) == 0)
+  {
+    return(data.frame())  # <- return empty, not NULL and not stop()
+  }
+
+  annotations <- Filter(Negate(is.null), annotations)
+
+  annotations |> dplyr::bind_rows() |>
     dplyr::arrange(exon_position) |>
     dplyr::mutate(
       framing = "no_framing",
-      name = factor(name, levels = c(levels(track_to_plot$name), "annotated_codons")),
+      name = factor(name, levels = c(levels(track_to_plot$name), "annotated_start_codons", "annotated_stop_codons")),
       track_group = if (is.null(original_start) & is.null(original_stop))
         "Transcript" else
           factor(
@@ -1159,7 +1162,7 @@
     orf_or_region
   )
 
-  if (!is.null(codon_queries))
+  if (nrow(codon_queries) > 0)
   {
     plot_labels <- c(plot_labels, "annotated_start_codons" = "Labelled\nCodons", "annotated_stop_codons" = "Labelled\nStop Codons")
   }
