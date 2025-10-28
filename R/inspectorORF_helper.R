@@ -350,16 +350,49 @@
     dplyr::distinct(seqnames, start, end, strand, transcript_id, name, score, .keep_all = TRUE) |>
     dplyr::group_by(transcript_id) |>
     dplyr::mutate(
-      exon_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
-      og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
-      framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name))
+      is_intron = grepl("intron", feature_number),
+
+      genomic_index = cumsum(!duplicated(paste(transcript_id, start, feature_number))),
+
+      exon_row = ifelse(is_intron, NA_integer_,
+                      cumsum(!is_intron & !duplicated(paste(transcript_id, feature_number, start)))),
+
+      exon_frame = ifelse(is_intron, NA_integer_, (exon_row - 1) %% 3),
+
+      exon_position = genomic_index,
+
+      og_framing = dplyr::case_when(
+        is_intron ~ "intron",
+        TRUE ~ as.character(exon_frame)
+      ),
+
+      framing = dplyr::case_when(
+        is_intron ~ "intron",
+        name %in% framed_tracks ~ as.character(exon_frame),
+        TRUE ~ name
+      )
+      # og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
+      # framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name))
       # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
       # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
       # is_exon = T
     ) |>
     dplyr::arrange(ifelse(strand == "-", dplyr::desc(start), xtfrm(start))) |>
     dplyr::ungroup() |>
-    dplyr::select(seqnames, start, end, strand, transcript_id, name, score, exon_position, exon_number, og_framing, framing) |>
+    dplyr::select(
+      seqnames,
+      start,
+      end,
+      strand,
+      transcript_id,
+      name,
+      score,
+      exon_position,
+      exon_number,
+      og_framing,
+      framing,
+      feature_number
+    ) |>
     as("GRanges")
 
   split(tracks, tracks$transcript_id) |> as("GRangesList")
@@ -845,6 +878,50 @@
   }
 }
 
+.set_feature_order <- function(x)
+{
+  type <- ifelse(grepl("^exon", x), "exon", "intron")
+  num <- as.integer(sub(".*_(\\d+)$", "\\1", x))
+  order <- rank(num, ties.method = "first")
+  # build combined label order interleaving exon/intron per number
+  unique_nums <- sort(unique(num))
+  order_labels <- as.vector(rbind(
+    paste0("exon_", unique_nums),
+    paste0("intron_", unique_nums)
+  ))
+  order_labels <- order_labels[order_labels %in% unique(x)]
+  factor(x, levels = order_labels, ordered = TRUE)
+}
+
+.add_introns <- function(exon_info)
+{
+  exons_by_tx <- GenomicRanges::split(exon_info, exon_info$transcript_id)
+  introns_by_tx <- S4Vectors::endoapply(exons_by_tx, function(exons)
+  {
+    reduced <- GenomicRanges::reduce(exons) |> sort()
+    introns <- GenomicRanges::gaps(reduced)
+    # restrict to within the transcript's bounding range
+    IRanges::subsetByOverlaps(introns, range(reduced))
+  })
+
+  introns <- unlist(introns_by_tx, use.names = FALSE)
+  GenomicRanges::mcols(introns)$transcript_id <- rep(names(introns_by_tx), lengths(introns_by_tx))
+
+  introns$feature_number <- paste0("intron_", sequence(lengths(introns_by_tx)))
+  # GenomicRanges::mcols(gene_info)$type <- "exon"
+  # GenomicRanges::mcols(introns)$type <- "intron"
+
+  exon_info <- c(exon_info, introns)
+
+  exon_info <- exon_info[order(
+    exon_info$transcript_id,
+    GenomicRanges::seqnames(exon_info),
+    ifelse(GenomicRanges::strand(exon_info) == "+", GenomicRanges::start(exon_info), -GenomicRanges::end(exon_info))
+  )]
+
+  exon_info
+}
+
 #' @importFrom ggh4x force_panelsizes
 #' @importFrom dplyr filter mutate coalesce select arrange rename bind_rows case_when summarise group_by left_join
 #' @importFrom patchwork wrap_plots plot_layout plot_annotation
@@ -859,6 +936,7 @@
   plot_region,
   plot_colours,
   scale_to_psites,
+  split_exons,
   plot_transcript_summary,
   codon_queries,
   condition_names,
@@ -868,7 +946,6 @@
   interactive,
   legend_position,
   text_size,
-  split_exons,
   .tx_plot,
   stop_codons = c("UAG", "UAA", "UGA")
 )
@@ -966,12 +1043,30 @@
 
   if (.tx_plot & no_orf)
   {
-    if (split_exons)
+    orf_or_region <- "Region"
+
+    if (is.character(split_exons) & split_exons == "with_introns")
     {
-      track_to_plot <- track_to_plot |> dplyr::mutate(track_group = factor(exon_number, levels = sort(unique(exon_number))))
+      print("Adding introns to plot")
+      track_to_plot <- track_to_plot |> dplyr::mutate(track_group = feature_number)
+
+
+      # Extract unique region names
+      groups <- unique(track_to_plot$track_group)
+
+      # Assign labels: "exon" if name starts with exon_, else "intron"
+      region_labels <- setNames(
+        ifelse(grepl("^exon", groups), "Exon", "Intron"),
+        groups
+      )
+    }
+    else if (is.logical(split_exons) & split_exons == T)
+    {
+      track_to_plot <- track_to_plot |> dplyr::filter(grepl("^exon", feature_number)) |>
+        dplyr::mutate(track_group = feature_number)
 
       region_labels <- setNames(
-        rep("", length(unique(track_to_plot$track_group))),
+        rep("Exon", length(unique(track_to_plot$track_group))),
         unique(track_to_plot$track_group)
       )
     }
@@ -979,22 +1074,36 @@
     {
       region_labels <- c("5_UTR" = "5'", "Region" = "Region", "3_UTR" = "3'")
 
-      track_to_plot <- track_to_plot |> dplyr::mutate(track_group = "Transcript")
+      track_to_plot <- track_to_plot |> dplyr::filter(grepl("^exon", feature_number)) |>
+        dplyr::mutate(track_group = "Transcript")
     }
   }
   else
   {
     region_labels <- c("5_UTR" = "5'", "ORF" = "ORF", "3_UTR" = "3'")
+    orf_or_region <- "ORF"
 
-    track_to_plot <- track_to_plot |> dplyr::mutate(
-      track_group = factor(
-        dplyr::case_when(
-          exon_position < original_start ~ "5_UTR",
-          exon_position >= original_start & exon_position <= original_stop ~ orf_or_region,
-          exon_position > original_stop ~ "3_UTR"), levels = c("5_UTR", orf_or_region, "3_UTR")
+    track_to_plot <- track_to_plot |> dplyr::filter(grepl("^exon", feature_number)) |>
+      dplyr::mutate(
+        track_group = factor(
+          dplyr::case_when(
+            exon_position < original_start ~ "5_UTR",
+            exon_position >= original_start & exon_position <= original_stop ~ orf_or_region,
+            exon_position > original_stop ~ "3_UTR"), levels = c("5_UTR", orf_or_region, "3_UTR")
+        )
       )
-    )
   }
+
+  group_levels <- track_to_plot |>
+    dplyr::distinct(track_group, exon_position) |>
+    dplyr::arrange(exon_position) |>
+    dplyr::pull(track_group) |>
+    unique()
+
+  track_to_plot <- track_to_plot |>
+    dplyr::mutate(
+      track_group = factor(track_group, levels = group_levels)
+    )
 
   filtered_framed_tracks <- intersect(transcript_tracks@framed_tracks, names(plot_read_pairs))
 
@@ -1086,7 +1195,7 @@
     half_size_plots,
     legend_position,
     text_size
-  )
+  ) + theme(legend.position = legend_position)
 
   orf_tracks <- track_to_plot |>
     dplyr::filter(exon_position >= original_start & exon_position <= original_stop) |>
@@ -1110,7 +1219,7 @@
     plot_colours,
     condition_names,
     text_size
-  )
+  ) + theme(legend.position = "none")
 
   plot_list <- list(plot_result, orf_frame_plot)
 
@@ -1144,8 +1253,9 @@
     else
     {
       patchwork_plot <- patchwork::wrap_plots(plot_list, nrow = 1, widths = plot_figure_width) +
-        patchwork::plot_layout(guides = "collect") +
-        patchwork::plot_annotation(theme = theme(legend.position = legend_position))
+        # patchwork::plot_layout(guides = "collect") #+
+        patchwork::plot_annotation() 
+        # theme(legend.position = "bottom")
 
       return(patchwork_plot)
     }

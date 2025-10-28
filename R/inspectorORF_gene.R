@@ -29,6 +29,7 @@ setClass(
 #' @param bed_file The bed file containing the gene tracks, each track must contain the trackline of gene_id
 #' @param gtf_file The path to the gtf file
 #' @param genome_file The path to the genome fasta or 2bit file
+#' @param keep_introns should introns be retained during generation of tracks
 #' @param framed_tracks The track line consisting of the P-site reads (defaults to p_sites)
 #'
 #' @return An inspectorORF_gtracks object consisting of the relevant reads
@@ -44,13 +45,26 @@ setClass(
 #' @importFrom methods as
 #' @importClassesFrom GenomicRanges GRanges
 #' @importClassesFrom rtracklayer TwoBitFile
-import_gene_bed <- function(bed_file, gtf_file, genome_file, framed_tracks = c("p_sites"))
+import_gene_bed <- function(
+	bed_file,
+	gtf_file,
+	genome_file,
+  keep_introns = F,
+	framed_tracks = c("p_sites")
+)
 {
   bed_tracks <- .import_bed_hack(bed_file, as_ranges = TRUE)
 
   track_ids <- names(bed_tracks)
 
   gtf_data <- .import_gtf(gtf_file, track_ids, track_type = "gene_id")
+
+  GenomicRanges::mcols(gtf_data)$feature_number <- paste0("exon_", GenomicRanges::mcols(gtf_data)$exon_number)
+
+  if (keep_introns)
+  {
+    gtf_data <- .add_introns(gtf_data)
+  }
 
   # if (is.null(extra_data_file))
   # {

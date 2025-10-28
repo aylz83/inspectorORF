@@ -4,7 +4,14 @@
 \alias{get_id_tracks}
 \title{Obtain tracks for a set of genes or transcript tracks by identifying the type of ids specified automatically}
 \usage{
-get_id_tracks(tracks, gtf_file, genome_file, ids, framed_tracks = c("p_sites"))
+get_id_tracks(
+  tracks,
+  gtf_file,
+  genome_file,
+  ids,
+  keep_introns = FALSE,
+  framed_tracks = c("p_sites")
+)
 }
 \arguments{
 \item{tracks}{the tracks object consisting of}
@@ -14,6 +21,8 @@ get_id_tracks(tracks, gtf_file, genome_file, ids, framed_tracks = c("p_sites"))
 \item{genome_file}{Path to the genome annotation 2bit file}
 
 \item{ids}{the gene ids of interest. If empty, will default to returning transcript tracks}
+
+\item{keep_introns}{should introns be retained during generation of tracks}
 
 \item{framed_tracks}{the name of rows which contain p-site data. Defaults to p_sites.}
 }

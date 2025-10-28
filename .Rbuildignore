@@ -8,3 +8,4 @@ vignettes/*.html
 LICENSE.BRGenomics
 images/
 docker/
+test_inspectorORF.R

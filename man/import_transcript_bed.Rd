@@ -8,6 +8,7 @@ import_transcript_bed(
   bed_file,
   gtf_file,
   genome_file,
+  keep_introns = F,
   framed_tracks = c("p_sites")
 )
 }
@@ -17,6 +18,8 @@ import_transcript_bed(
 \item{gtf_file}{The path to the gtf file}
 
 \item{genome_file}{The path to the genome fasta or 2bit file}
+
+\item{keep_introns}{should introns be retained during generation of tracks}
 
 \item{framed_tracks}{The track line consisting of the P-site reads (defaults to p_sites)}
 }

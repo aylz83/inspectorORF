@@ -4,7 +4,13 @@
 \alias{import_gene_bed}
 \title{Import reads from a bed file where the tracks are gene level information}
 \usage{
-import_gene_bed(bed_file, gtf_file, genome_file, framed_tracks = c("p_sites"))
+import_gene_bed(
+  bed_file,
+  gtf_file,
+  genome_file,
+  keep_introns = F,
+  framed_tracks = c("p_sites")
+)
 }
 \arguments{
 \item{bed_file}{The bed file containing the gene tracks, each track must contain the trackline of gene_id}
@@ -12,6 +18,8 @@ import_gene_bed(bed_file, gtf_file, genome_file, framed_tracks = c("p_sites"))
 \item{gtf_file}{The path to the gtf file}
 
 \item{genome_file}{The path to the genome fasta or 2bit file}
+
+\item{keep_introns}{should introns be retained during generation of tracks}
 
 \item{framed_tracks}{The track line consisting of the P-site reads (defaults to p_sites)}
 }

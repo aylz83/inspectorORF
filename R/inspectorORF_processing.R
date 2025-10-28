@@ -127,12 +127,14 @@ import_tracks_from_RiboTaper <- function(...)
 #' @importClassesFrom GenomicRanges GRanges
 #' @importFrom dplyr across where
 #' @importFrom methods as
-merge_RNA_tracks_with_ORFquant <- function(rna_reads,
-                                           rna_abundance = NULL,
-                                           orfquant_psites,
-                                           extra = NULL,
-                                           extra_orfquant_psites = NULL,
-                                           orfquant_results_type = "P_sites_all")
+merge_RNA_tracks_with_ORFquant <- function(
+  rna_reads,
+  rna_abundance = NULL,
+  orfquant_psites,
+  extra = NULL,
+  extra_orfquant_psites = NULL,
+  orfquant_results_type = "P_sites_all"
+)
 {
   tracks <- list(rna_reads = rna_reads)
 
@@ -166,8 +168,10 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
   for (track_name in remaining_tracks)
   {
     print(paste("Importing data for", track_name))
-    joined_reads <- joined_reads |> dplyr::full_join(.import_coverage_bed(tracks[[track_name]], track_name),
-                                                     by = c("seqnames", "start", "strand"))
+    joined_reads <- joined_reads |> dplyr::full_join(
+      .import_coverage_bed(tracks[[track_name]], track_name),
+      by = c("seqnames", "start", "strand")
+    )
   }
 
   # track_names <- names(tracks)
@@ -180,10 +184,10 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
   for (track_name in names(psite_tracks))
   {
     print(paste("Importing data for", track_name))
-    joined_reads <- joined_reads |> dplyr::full_join(.import_orfquant(psite_tracks[[track_name]],
-                                                                      track_name,
-                                                                      orfquant_results_type),
-                                                     by = c("seqnames", "start", "strand"))
+    joined_reads <- joined_reads |> dplyr::full_join(
+      .import_orfquant(psite_tracks[[track_name]], track_name,orfquant_results_type),
+      by = c("seqnames", "start", "strand")
+    )
   }
 
   # psite_names <- names(psite_tracks)
@@ -210,6 +214,7 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
 #' @param gtf_file Path to the gtf annotation
 #' @param genome_file Path to the genome annotation 2bit file
 #' @param ids the gene ids of interest. If empty, will default to returning transcript tracks
+#' @param keep_introns should introns be retained during generation of tracks
 #' @param framed_tracks the name of rows which contain p-site data. Defaults to p_sites.
 #'
 #' @return An inspectorORF gene or transcript tracks object of all the ids requested
@@ -240,19 +245,22 @@ merge_RNA_tracks_with_ORFquant <- function(rna_reads,
 #' @importClassesFrom IRanges IRanges
 #' @importClassesFrom GenomicRanges GRanges GRangesList
 #' @importClassesFrom rtracklayer UCSCData
-get_id_tracks <- function(tracks,
-                          gtf_file,
-                          genome_file,
-                          ids,
-                          framed_tracks = c("p_sites"))
+get_id_tracks <- function(
+  tracks,
+  gtf_file,
+  genome_file,
+  ids,
+  keep_introns = FALSE,
+  framed_tracks = c("p_sites")
+)
 {
   if (length(ids) == 0 || .check_id_type(gtf_file, ids[[1]]) == "transcript_id")
   {
-    return(get_transcript_tracks(tracks, gtf_file, genome_file, ids, framed_tracks))
+    return(get_transcript_tracks(tracks, gtf_file, genome_file, ids, keep_introns = keep_introns, framed_tracks = framed_tracks))
   }
   else if (.check_id_type(gtf_file, ids[[1]]) == "gene_id")
   {
-    return(get_gene_tracks(tracks, gtf_file, genome_file, ids, framed_tracks))
+    return(get_gene_tracks(tracks, gtf_file, genome_file, ids, keep_introns = keep_introns, framed_tracks = framed_tracks))
   }
   else
   {
@@ -266,6 +274,7 @@ get_id_tracks <- function(tracks,
 #' @param gtf_file Path to the gtf annotation
 #' @param genome_file Path to the genome annotation 2bit file
 #' @param gene_ids the gene ids of interest
+#' @param keep_introns should introns be retained during generation of tracks
 #' @param framed_tracks the name of rows which contain p-site data. Defaults to p_sites.
 #'
 #' @return An inspectorORF gene tracks object of all the genes requested
@@ -292,17 +301,31 @@ get_id_tracks <- function(tracks,
 #' @importFrom tidyr pivot_longer
 #' @importFrom methods as new
 #' @importFrom dplyr select arrange desc
-#' @importFrom GenomicRanges split mcols
+#' @importFrom GenomicRanges split mcols reduce gaps seqnames strand start end
+#' @importFrom S4Vectors endoapply
+#' @importFrom IRanges subsetByOverlaps
 #' @importClassesFrom IRanges IRanges
 #' @importClassesFrom GenomicRanges GRanges GRangesList
 #' @importClassesFrom rtracklayer UCSCData
-get_gene_tracks <- function(tracks,
-                            gtf_file,
-                            genome_file,
-                            gene_ids,
-                            framed_tracks = c("p_sites"))
+get_gene_tracks <- function(
+  tracks,
+  gtf_file,
+  genome_file,
+  gene_ids,
+  keep_introns = FALSE,
+  framed_tracks = c("p_sites")
+)
 {
   gene_info <- .import_gtf(gtf_file, unique(gene_ids), track_type = "gene_id")
+  GenomicRanges::mcols(gene_info)$feature_number <- paste0("exon_", GenomicRanges::mcols(gene_info)$exon_number)
+
+  if (keep_introns)
+  {
+    gene_info <- .add_introns(gene_info)
+  }
+
+  GenomicRanges::mcols(gene_info)$feature_number <- .set_feature_order(GenomicRanges::mcols(gene_info)$feature_number)
+
   # gene_info <- split(gene_info, gene_info$gene_id)
 
   tracks_list <- plyranges::join_overlap_inner_within_directed(tracks, gene_info, maxgap = -1L, minoverlap = 0L)
@@ -355,6 +378,7 @@ get_gene_tracks <- function(tracks,
 #' @param gtf_file Path to a GTF annotation file
 #' @param genome_file path to a Genome 2bit file
 #' @param transcript_ids vector of transcript_id(s) to obtain. If NULL, all transcript_ids within the annotation will be used.
+#' @param keep_introns should introns be retained during generation of tracks
 #' @param additional_info additional information in GRanges format with transcript level coordinates such as Kozak scores, Mass-spec data etc
 #' @param framed_tracks names consisting of p_sites. e.g, if there are two conditions, both with ORFquant P-sites read in, this would
 #'
@@ -381,14 +405,23 @@ get_gene_tracks <- function(tracks,
 #' @importFrom GenomicRanges mcols
 #' @importClassesFrom GenomicRanges GRanges GRangesList
 #' @importClassesFrom rtracklayer UCSCData TwoBitFile
-get_transcript_tracks <- function(tracks,
-                                  gtf_file,
-                                  genome_file,
-                                  transcript_ids = NULL,
-                                  additional_info = NULL,
-                                  framed_tracks = c("p_sites"))
+get_transcript_tracks <- function(
+  tracks,
+  gtf_file,
+  genome_file,
+  transcript_ids = NULL,
+  keep_introns = FALSE,
+  additional_info = NULL,
+  framed_tracks = c("p_sites")
+)
 {
   exon_info <- .import_gtf(gtf_file, unique(transcript_ids), track_type = "transcript_id")
+  GenomicRanges::mcols(exon_info)$feature_number <- paste0("exon_", GenomicRanges::mcols(exon_info)$exon_number)
+
+  if (keep_introns)
+  {
+    exon_info <- .add_introns(exon_info)
+  }
 
   # exon_info <- gtf_annotation |> plyranges::filter(type == "exon" & transcript_id %in% unique(transcript_ids))
 
@@ -400,7 +433,7 @@ get_transcript_tracks <- function(tracks,
   tracks <- lapply(tracks_list, function(new_tracks)
   {
     transcript_tracks <- new_tracks |> as.data.frame() |>
-      dplyr::select(-c(setdiff(colnames(mcols(exon_info)), c("transcript_id", "exon_number"))))
+      dplyr::select(-c(setdiff(colnames(mcols(exon_info)), c("transcript_id", "feature_number"))))
 
     if (transcript_tracks$strand[[1]] == "-")
     {
@@ -425,15 +458,36 @@ get_transcript_tracks <- function(tracks,
         dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0)))
     }
 
+    transcript_tracks <- transcript_tracks |>
+      dplyr::group_by(transcript_id) |>
+      dplyr::mutate(
+        is_intron = grepl("intron", feature_number),
+        exon_row = ifelse(is_intron, NA, cumsum(!is_intron)),
+        exon_frame = ifelse(is_intron, NA, (exon_row - 1) %% 3)
+      ) |>
+      dplyr::ungroup()
+
     transcript_tracks <- transcript_tracks |> pivot_longer(cols = score_names, values_to = "score") |>
       dplyr::group_by(transcript_id) |>
-      dplyr::mutate(end = start,
-                    exon_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
-                    og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
-                    framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name)),
-                    # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
-                    # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
-                    is_exon = T) |>
+      dplyr::mutate(
+        end = start,
+        exon_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
+        og_framing = dplyr::case_when(
+          is_intron ~ "intron",
+          TRUE ~ as.character(exon_frame)
+        ),
+        framing = dplyr::case_when(
+          is_intron ~ "intron",
+          name %in% framed_tracks ~ as.character(exon_frame),
+          TRUE ~ name
+        )
+
+        # feature_number <- .set_feature_order(feature_number)
+        # og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
+        # framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name)),
+        # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
+        # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
+        ) |>
       dplyr::ungroup()
 
     ucsc_data <- transcript_tracks |> as("GRanges") |> as("UCSCData")

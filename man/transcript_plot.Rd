@@ -13,8 +13,8 @@ transcript_plot(
   plot_colours = c(rna_reads = "grey60", `0` = "#440854", `1` = "#23A884", `2` =
     "#FEE725"),
   scale_to_psites = F,
-  plot_transcript_summary = F,
   split_exons = F,
+  plot_transcript_summary = F,
   codon_queries = NULL,
   condition_names = c(rna_reads = ""),
   plot_read_pairs = c(p_sites = "rna_reads"),
@@ -40,9 +40,9 @@ transcript_plot(
 
 \item{scale_to_psites}{Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this}
 
-\item{plot_transcript_summary}{Should the remaining P-sites for the full transcript (excluding those in the ORF) be plot}
+\item{split_exons}{separate regions by exon if TRUE, include plotting of intron regions if set to "with_introns" assuming keep_introns was set to TRUE when generating tracks. - not compatible with adding ORF regions}
 
-\item{split_exons}{separate regions by exon - not compatible with adding ORF regions}
+\item{plot_transcript_summary}{Should the remaining P-sites for the full transcript (excluding those in the ORF) be plot}
 
 \item{codon_queries}{an optional list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot}
 

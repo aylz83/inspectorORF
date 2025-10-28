@@ -422,6 +422,7 @@ orf_plot <- function(
     plot_region,
     plot_colours,
     scale_to_psites,
+    split_exons = F,
     plot_transcript_summary,
     codon_queries,
     condition_names,
@@ -431,7 +432,6 @@ orf_plot <- function(
     interactive,
     legend_position,
     text_size,
-    split_exons = F,
     .tx_plot = F
   )
 }
