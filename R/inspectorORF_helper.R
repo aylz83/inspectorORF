@@ -388,7 +388,6 @@
       name,
       score,
       exon_position,
-      exon_number,
       og_framing,
       framing,
       feature_number
@@ -687,7 +686,7 @@
   annotations <- lapply(codon_queries, function(query)
   {
     codons_to_plot <- NULL
-  
+
     if (is.logical(query$annotate_stop) && query$annotate_stop == T)
     {
       codons_to_plot <- .search_for_codons(
@@ -1257,7 +1256,7 @@
     {
       patchwork_plot <- patchwork::wrap_plots(plot_list, nrow = 1, widths = plot_figure_width) +
         # patchwork::plot_layout(guides = "collect") #+
-        patchwork::plot_annotation() 
+        patchwork::plot_annotation()
         # theme(legend.position = "bottom")
 
       return(patchwork_plot)

@@ -488,6 +488,19 @@ get_transcript_tracks <- function(
         # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
         # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
         ) |>
+      dplyr::select(
+        seqnames,
+        start,
+        end,
+        strand,
+        transcript_id,
+        name,
+        score,
+        exon_position,
+        og_framing,
+        framing,
+        feature_number
+      ) |>
       dplyr::ungroup()
 
     ucsc_data <- transcript_tracks |> as("GRanges") |> as("UCSCData")
