@@ -317,6 +317,7 @@ find_orfs <- function(transcript_tracks,
 #' @param in_frame a logical indicating if the annotation_codons should be in frame to the ORF or not
 #' @param annotate_stop if true will look for stop codons, or can be vector of strings to specify codons.
 #' @param colour a string consisting of the colour to plot the annotated codons in
+#' @param annotation_label name of the plot tracks, defaults to "Labelled Codons"
 #'
 #' @return a named list of set codon queries for use in the codon_queries option of the orf_plot function
 #' @export
@@ -334,7 +335,7 @@ find_orfs <- function(transcript_tracks,
 #'   codon_queries = list(codon_query(annotate_start = TRUE))
 #' )
 #' test_orf_plot
-codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame = F, annotate_stop = F, colour = NULL)
+codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame = F, annotate_stop = F, colour = NULL, annotation_label = "Labelled\nCodons")
 {
   if (annotate_start == T && !is.null(annotation_codons))
   {
@@ -346,7 +347,8 @@ codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame =
     annotate_start = annotate_start,
     in_frame = in_frame,
     annotate_stop = annotate_stop,
-    colour = colour
+    colour = colour,
+    annotation_label = annotation_label
   )
 }
 

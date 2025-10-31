@@ -362,12 +362,14 @@
       exon_position = genomic_index,
 
       og_framing = dplyr::case_when(
+        is_intron & name %in% framed_tracks ~ "intron_psite",
         is_intron ~ "intron",
         TRUE ~ as.character(exon_frame)
       ),
 
       framing = dplyr::case_when(
-        is_intron ~ "intron",
+      	is_intron & name %in% framed_tracks ~ "intron_psite",
+      	is_intron ~ "intron",
         name %in% framed_tracks ~ as.character(exon_frame),
         TRUE ~ name
       )
@@ -432,6 +434,77 @@
 
   # no stop codon found
   return(NULL)
+}
+
+#' @importFrom ggplot2 ggplot geom_bar aes scale_color_manual coord_cartesian xlab ylab theme_minimal theme facet_grid geom_blank scale_y_continuous labeller
+#' @importFrom ggrepel geom_text_repel
+#' @importFrom ggh4x facetted_pos_scales
+#' @importFrom grid unit arrow
+.codon_plot <- function(
+  plot_result,
+  codon_query,
+  row_sizes
+)
+{
+  # Compute minimum spacing between sorted exon positions
+  codon_positions <- sort(codon_query$exon_position)
+  spacing <- diff(codon_positions)
+
+  # Count how many pairs are "close"
+  close_threshold <- 5
+  num_close_pairs <- sum(spacing < close_threshold)
+
+  # Scale panel height by number of close pairs
+  min_codon_row_size <- 0.1
+  max_codon_row_size <- 1
+  codon_row_size <- min(
+    max(
+      min_codon_row_size,
+      0.1 + 0.08 * num_close_pairs  # adjust scaling factor as needed
+    ),
+    max_codon_row_size
+  )
+
+  row_sizes <- c(row_sizes, codon_row_size)
+
+  list(
+    plot = plot_result +
+    ggrepel::geom_text_repel(
+      data = codon_query,
+      aes(
+        x = exon_position,
+        label = codon
+      ),
+      y = 10,
+      max.overlaps = Inf,
+      colour = codon_query$colour,
+      min.segment.length = 0,
+      nudge_y = -10,
+      # angle = 90,
+      segment.curvature = -0.1,
+      segment.ncp = 3,
+      segment.angle = 20,
+      size = 3,
+      # hjust = 0,
+      # segment.size = 0.2,
+      # force_pull = 0, # do not pull toward data points
+      # direction = "x",
+      bg.color = "grey30", # shadow color
+      bg.r = 0.005, # shadow radius
+      arrow = grid::arrow(length = grid::unit(0.015, "npc"))
+    ) +
+    geom_blank(data = codon_query, aes(x = exon_position, y = 10)) +
+    ggh4x::facetted_pos_scales(
+      y = list(
+        grepl("annotation_plot_", name) ~ scale_y_continuous(
+          limits = c(0, 10),
+          breaks = NULL,
+          labels = NULL
+        )
+      )
+    ),
+    row_sizes = row_sizes
+  )
 }
 
 #' @importFrom ggplot2 ggplot geom_bar aes scale_color_manual coord_cartesian xlab ylab theme_minimal theme facet_grid geom_blank scale_y_continuous labeller
@@ -553,65 +626,21 @@
   }
 
   row_sizes <- c(rep(0.5, full_size_plots), rep(0.15, half_size_plots))
-
-  if (!is.null(codon_queries) && nrow(codon_queries) > 0)
+  if (!is.null(codon_queries) & nrow(codon_queries) > 0)
   {
-    # Compute minimum spacing between sorted exon positions
-    codon_positions <- sort(codon_queries$exon_position)
-    spacing <- diff(codon_positions)
+    # split codons_queries into list based on plot_number
+    codon_queries <- split(codon_queries, codon_queries$name)
 
-    # Count how many pairs are "close"
-    close_threshold <- 5
-    num_close_pairs <- sum(spacing < close_threshold)
+    # iterate over codon queries list
+    for (plot_number in seq_along(codon_queries))
+    {
+      # add below plot result for each element in list
+      codon_query <- codon_queries[[plot_number]]
+      plot_data <- .codon_plot(plot_result, codon_query, row_sizes)
+      plot_result <- plot_data[[1]]
 
-    # Scale panel height by number of close pairs
-    min_codon_row_size <- 0.1
-    max_codon_row_size <- 1
-    codon_row_size <- min(
-      max(
-        min_codon_row_size,
-        0.1 + 0.08 * num_close_pairs  # adjust scaling factor as needed
-      ),
-      max_codon_row_size
-    )
-
-    row_sizes <- c(row_sizes, codon_row_size)
-
-    plot_result <- plot_result +
-      ggrepel::geom_text_repel(
-        data = codon_queries,
-        aes(
-          x = exon_position,
-          label = codon
-        ),
-        y = 10,
-        max.overlaps = Inf,
-        colour = codon_queries$colour,
-        min.segment.length = 0,
-        nudge_y = -10,
-        # angle = 90,
-        segment.curvature = -0.1,
-        segment.ncp = 3,
-        segment.angle = 20,
-        size = 3,
-        # hjust = 0,
-        # segment.size = 0.2,
-        # force_pull = 0, # do not pull toward data points
-        # direction = "x",
-        bg.color = "grey30", # shadow color
-        bg.r = 0.005, # shadow radius
-        arrow = grid::arrow(length = grid::unit(0.015, "npc"))
-      ) +
-      geom_blank(data = codon_queries, aes(x = exon_position, y = 10)) +
-      ggh4x::facetted_pos_scales(
-        y = list(
-          c("annotated_start_codons", "annotated_stop_codons") %in% name ~ scale_y_continuous(
-            limits = c(0, 10),
-            breaks = NULL,
-            labels = NULL
-          )
-        )
-      )
+      row_sizes <- plot_data[[2]]
+    }
   }
 
   plot_result + ggh4x::force_panelsizes(
@@ -624,6 +653,8 @@
 .search_for_codons <- function(
   sequence,
   codons_to_search,
+  annotation_label,
+  plot_number,
   original_start,
   start_position,
   stop_position,
@@ -649,7 +680,9 @@
     codon = names(codons_to_plot),
     exon_position = codons_to_plot,
     p_site_framing = (codons_to_plot - 1) %% 3,
-    name = ifelse(is_start == T, "annotated_start_codons", "annotated_stop_codons")
+    annotation_label = annotation_label,
+    plot_number = plot_number,
+    name = paste0("annotation_plot_", plot_number)
   )
 
   codons_to_plot <- codons_to_plot |>
@@ -661,7 +694,7 @@
       dplyr::filter(p_site_framing == ((original_start - 1) %% 3))
   }
 
-  codons_to_plot
+  codons_to_plot |> dplyr::mutate(annotation_label = as.factor(annotation_label))
 }
 
 #' @importFrom dplyr arrange mutate bind_rows distinct
@@ -683,8 +716,14 @@
     return(data.frame())
   }
 
-  annotations <- lapply(codon_queries, function(query)
+  labels <- sapply(codon_queries, `[[`, "annotation_label")
+  label_to_plot <- match(labels, unique(labels))
+
+  annotations <- lapply(seq_along(codon_queries), function(at)
   {
+    query <- codon_queries[[at]]
+    plot_number <- label_to_plot[at]
+
     codons_to_plot <- NULL
 
     if (is.logical(query$annotate_stop) && query$annotate_stop == T)
@@ -696,7 +735,9 @@
         start_position,
         stop_position,
         in_frame = query$in_frame,
-        is_start = F
+        is_start = F,
+        annotation_label = query$annotation_label,
+        plot_number = plot_number
       )
     }
     else if (is.character(query$annotate_stop))
@@ -708,7 +749,9 @@
         start_position,
         stop_position,
         in_frame = query$in_frame,
-        is_start = F
+        is_start = F,
+        annotation_label = query$annotation_label,
+        plot_number = plot_number
       )
     }
     else if (query$annotate_start == T)
@@ -718,8 +761,10 @@
       codons_to_plot <- data.frame(
         codon = start_codon,
         exon_position = original_start,
-        name = "annotated_start_codons",
-        is_start = T
+        plot_number = plot_number,
+        is_start = T,
+        annotation_label = query$annotation_label,
+        name = paste0("annotation_plot_", plot_number)
       )
     }
     else if (!is.null(query$annotation_codons))
@@ -731,7 +776,9 @@
         start_position,
         stop_position,
         in_frame = query$in_frame,
-        is_start = T
+        is_start = T,
+        annotation_label = query$annotation_label,
+        plot_number = plot_number
       )
     }
 
@@ -759,13 +806,15 @@
     return(data.frame())  # <- return empty, not NULL and not stop()
   }
 
-  annotations <- Filter(Negate(is.null), annotations)
+  annotations <- Filter(Negate(is.null), annotations) |> dplyr::bind_rows()
 
-  annotations |> dplyr::bind_rows() |>
+  plot_levels <- unique(paste0("annotated_plot_", annotations$plot_number))
+
+  annotations |>
     dplyr::arrange(exon_position) |>
     dplyr::mutate(
       framing = "no_framing",
-      name = factor(name, levels = c(levels(track_to_plot$name), "annotated_start_codons", "annotated_stop_codons")),
+      name = factor(name, levels = unique(name)),
       track_group = if (is.null(original_start) & is.null(original_stop))
         "Transcript" else
           factor(
@@ -815,8 +864,11 @@
 
   read_names[names(read_names)] <- paste(read_names[names(read_names)], "P-Sites")
 
+  names(plot_colours) <- sub("intron_psite", "Intronic", names(plot_colours))
+  track_to_plot$p_site_framing <- sub("intron_psite", "Intronic", track_to_plot$p_site_framing)
+
   ggplot(track_to_plot, aes(x = p_site_framing, y = p_sites, fill = p_site_framing)) +
-  geom_bar(stat = "identity") +
+    geom_bar(stat = "identity") +
     scale_color_manual(values = plot_colours, aesthetics = c("fill", "colour")) +
     labs(x = NULL, y = NULL) +
     theme_minimal() +
@@ -1052,7 +1104,6 @@
       print("Adding introns to plot")
       track_to_plot <- track_to_plot |> dplyr::mutate(track_group = feature_number)
 
-
       # Extract unique region names
       groups <- unique(track_to_plot$track_group)
 
@@ -1163,7 +1214,8 @@
 
   if (nrow(codon_queries) > 0)
   {
-    plot_labels <- c(plot_labels, "annotated_start_codons" = "Labelled\nCodons", "annotated_stop_codons" = "Labelled\nStop Codons")
+    codon_labels <- setNames(unique(codon_queries$annotation_label), unique(codon_queries$name))
+    plot_labels <- c(plot_labels, codon_labels)
   }
 
   # obtain the tracks to plot
