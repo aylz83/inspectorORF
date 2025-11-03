@@ -863,7 +863,7 @@
 
   track_to_plot$region <- factor(track_to_plot$region, levels = c("ORF", "Region", "Transcript", "Outside of ORF"))
 
-  read_names[names(read_names)] <- paste(read_names[names(read_names)], "P-Sites")
+  read_names[names(read_names)] <- paste(read_names[names(read_names)], "Triplet periodicity")
 
   names(plot_colours) <- sub("intron_psite", "Intronic", names(plot_colours))
   track_to_plot$p_site_framing <- sub("intron_psite", "Intronic", track_to_plot$p_site_framing)
