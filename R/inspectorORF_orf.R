@@ -147,7 +147,7 @@ find_orfs <- function(transcript_tracks,
   tracks <- transcript_tracks@tracks[[transcript_filter]] |>
     as.data.frame() |>
     dplyr::filter(name == transcript_tracks@framed_tracks[[1]]) |>
-    dplyr::arrange(exon_position)
+    dplyr::arrange(genomic_position)
 
   # Subset the sequence starting from threshold
   sequence <- substr(sequence, start_threshold_filter, nchar(sequence))
@@ -175,24 +175,24 @@ find_orfs <- function(transcript_tracks,
     dplyr::filter(name == transcript_tracks@framed_tracks[[1]])
 
   tracks_df <- tracks_df |>
-    dplyr::left_join(start_codons[, c("position", "is_start")], by = c("exon_position" = "position")) |>
-    dplyr::left_join(stop_codons[, c("position", "is_stop")], by = c("exon_position" = "position")) |>
+    dplyr::left_join(start_codons[, c("position", "is_start")], by = c("genomic_position" = "position")) |>
+    dplyr::left_join(stop_codons[, c("position", "is_stop")], by = c("genomic_position" = "position")) |>
     tidyr::replace_na(list(is_start = FALSE, is_stop = FALSE))
 
   # Get start positions and frames
   start_tracks <- tracks_df |> dplyr::filter(is_start == TRUE)
-  start_positions <- start_tracks$exon_position
+  start_positions <- start_tracks$genomic_position
   start_frames <- start_tracks$framing
 
   # Get downstream in-frame stops
   stop_positions <- mapply(function(start_pos, frame)
   {
     downstream_stops <- tracks_df |>
-      dplyr::filter(exon_position > start_pos, is_stop == TRUE, framing == frame)
+      dplyr::filter(genomic_position > start_pos, is_stop == TRUE, framing == frame)
 
     if (nrow(downstream_stops) > 0)
     {
-      first_stop <- downstream_stops$exon_position[[1]]
+      first_stop <- downstream_stops$genomic_position[[1]]
 
       if ((first_stop - start_pos) >= orf_length_filter)
       {
@@ -591,8 +591,8 @@ get_orf_framing <- function(transcript_tracks,
 
   transcript_tracks@tracks[[transcript_filter]] |>
     dplyr::filter(name == transcript_tracks@framed_tracks &
-                    exon_position > (start_position - 1) &
-                    exon_position < (stop_position + 1)) |>
+                    genomic_position > (start_position - 1) &
+                    genomic_position < (stop_position + 1)) |>
     dplyr::group_by(framing) |>
     dplyr::summarise(totals = sum(score))
 }

@@ -352,14 +352,14 @@
     dplyr::mutate(
       is_intron = grepl("intron", feature_number),
 
-      genomic_index = cumsum(!duplicated(paste(transcript_id, start, feature_number))),
-
-      exon_row = ifelse(is_intron, NA_integer_,
-                      cumsum(!is_intron & !duplicated(paste(transcript_id, feature_number, start)))),
+      exon_row = ifelse(
+        is_intron, NA_integer_,
+        cumsum(!is_intron & !duplicated(paste(transcript_id, feature_number, start)))
+      ),
 
       exon_frame = ifelse(is_intron, NA_integer_, (exon_row - 1) %% 3),
 
-      exon_position = genomic_index,
+      genomic_position = cumsum(!duplicated(paste(transcript_id, start, feature_number))),
 
       og_framing = dplyr::case_when(
         is_intron & name %in% framed_tracks ~ "intron_psite",
@@ -389,7 +389,8 @@
       transcript_id,
       name,
       score,
-      exon_position,
+      is_intron,
+      genomic_position,
       og_framing,
       framing,
       feature_number
@@ -423,7 +424,7 @@
   # loop through positions in-frame and look for stop codon
   for (i in seq_len(nrow(remaining)))
   {
-    codon_start <- remaining$exon_position[i]
+    codon_start <- remaining$genomic_position[i]
     codon <- substr(sequence, codon_start, codon_start + 2)
 
     if (codon %in% stop_codons)
@@ -447,7 +448,7 @@
 )
 {
   # Compute minimum spacing between sorted exon positions
-  codon_positions <- sort(codon_query$exon_position)
+  codon_positions <- sort(codon_query$genomic_position)
   spacing <- diff(codon_positions)
 
   # Count how many pairs are "close"
@@ -472,7 +473,7 @@
     ggrepel::geom_text_repel(
       data = codon_query,
       aes(
-        x = exon_position,
+        x = genomic_position,
         label = codon
       ),
       y = 10,
@@ -493,7 +494,7 @@
       bg.r = 0.005, # shadow radius
       arrow = grid::arrow(length = grid::unit(0.015, "npc"))
     ) +
-    geom_blank(data = codon_query, aes(x = exon_position, y = 10)) +
+    geom_blank(data = codon_query, aes(x = genomic_position, y = 10)) +
     ggh4x::facetted_pos_scales(
       y = list(
         grepl("annotation_plot_", name) ~ scale_y_continuous(
@@ -559,13 +560,13 @@
   plot_result <- ggplot(
     track_to_plot,
     aes(y = score,
-        x = exon_position,
+        x = genomic_position,
         colour = framing,
         fill = framing)
   ) +
     geom_bar(stat = "identity", na.rm = TRUE) +
     geom_bar(
-      aes(x = exon_position,
+      aes(x = genomic_position,
           y = p_sites,
           colour = p_site_framing,
           fill = p_site_framing),
@@ -678,7 +679,7 @@
 
   codons_to_plot <- data.frame(
     codon = names(codons_to_plot),
-    exon_position = codons_to_plot,
+    genomic_position = codons_to_plot,
     p_site_framing = (codons_to_plot - 1) %% 3,
     annotation_label = annotation_label,
     plot_number = plot_number,
@@ -686,7 +687,7 @@
   )
 
   codons_to_plot <- codons_to_plot |>
-    dplyr::filter(exon_position >= start_position & exon_position <= stop_position)
+    dplyr::filter(genomic_position >= start_position & genomic_position <= stop_position)
 
   if (in_frame == T)
   {
@@ -760,7 +761,7 @@
       start_codon <- substr(sequence, start = original_start, stop = original_start + 2)
       codons_to_plot <- data.frame(
         codon = start_codon,
-        exon_position = original_start,
+        genomic_position = original_start,
         plot_number = plot_number,
         is_start = T,
         annotation_label = query$annotation_label,
@@ -811,7 +812,7 @@
   plot_levels <- unique(paste0("annotated_plot_", annotations$plot_number))
 
   annotations |>
-    dplyr::arrange(exon_position) |>
+    dplyr::arrange(genomic_position) |>
     dplyr::mutate(
       framing = "no_framing",
       name = factor(name, levels = unique(name)),
@@ -819,12 +820,12 @@
         "Transcript" else
           factor(
             case_when(
-              !is.null(original_start) & exon_position < original_start ~ "5_UTR",
-              !is.null(original_start) & exon_position >= original_start & exon_position <= original_stop ~ region_or_orf,
-              !is.null(original_start) & exon_position > original_stop ~ "3_UTR"), levels = c("5_UTR", region_or_orf, "3_UTR")
+              !is.null(original_start) & genomic_position < original_start ~ "5_UTR",
+              !is.null(original_start) & genomic_position >= original_start & genomic_position <= original_stop ~ region_or_orf,
+              !is.null(original_start) & genomic_position > original_stop ~ "3_UTR"), levels = c("5_UTR", region_or_orf, "3_UTR")
           )
     ) |>
-    dplyr::distinct(exon_position, .keep_all = T)
+    dplyr::distinct(genomic_position, .keep_all = T)
 }
 
 .create_orf_list <- function(
@@ -1140,16 +1141,16 @@
       dplyr::mutate(
         track_group = factor(
           dplyr::case_when(
-            exon_position < original_start ~ "5_UTR",
-            exon_position >= original_start & exon_position <= original_stop ~ orf_or_region,
-            exon_position > original_stop ~ "3_UTR"), levels = c("5_UTR", orf_or_region, "3_UTR")
+            genomic_position < original_start ~ "5_UTR",
+            genomic_position >= original_start & genomic_position <= original_stop ~ orf_or_region,
+            genomic_position > original_stop ~ "3_UTR"), levels = c("5_UTR", orf_or_region, "3_UTR")
         )
       )
   }
 
   group_levels <- track_to_plot |>
-    dplyr::distinct(track_group, exon_position) |>
-    dplyr::arrange(exon_position) |>
+    dplyr::distinct(track_group, genomic_position) |>
+    dplyr::arrange(genomic_position) |>
     dplyr::pull(track_group) |>
     unique()
 
@@ -1165,7 +1166,7 @@
     track_to_plot <- track_to_plot |> dplyr::filter(name %in% c(filtered_framed_tracks, names(dataset_names)))
   }
 
-  # track_to_plot <- track_to_plot |> arrange(seqnames, start, strand, exon_position, framing)
+  # track_to_plot <- track_to_plot |> arrange(seqnames, start, strand, genomic_position, framing)
 
   p_sites <- track_to_plot |> dplyr::select(transcript_id, seqnames, start, end, name, score, framing) |>
     dplyr::filter(name %in% names(plot_read_pairs)) |>
@@ -1219,7 +1220,7 @@
   }
 
   # obtain the tracks to plot
-  to_plot <- track_to_plot |> dplyr::filter(exon_position >= start_position & exon_position <= stop_position)
+  to_plot <- track_to_plot |> dplyr::filter(genomic_position >= start_position & genomic_position <= stop_position)
 
   if (scale_to_psites == T)
   {
@@ -1252,13 +1253,13 @@
   ) + theme(legend.position = legend_position)
 
   orf_tracks <- track_to_plot |>
-    dplyr::filter(exon_position >= original_start & exon_position <= original_stop) |>
+    dplyr::filter(genomic_position >= original_start & genomic_position <= original_stop) |>
     dplyr::mutate(region = ifelse(.tx_plot == TRUE & no_orf, "Transcript", orf_or_region))
 
   if (plot_transcript_summary)
   {
     rest_of_transcript <- track_to_plot |>
-      dplyr::filter(!(exon_position %in% orf_tracks$exon_position)) |>
+      dplyr::filter(!(genomic_position %in% orf_tracks$genomic_position)) |>
       dplyr::mutate(region = "Rest of Transcript")
 
     combined_tracks <- dplyr::bind_rows(orf_tracks, rest_of_transcript)

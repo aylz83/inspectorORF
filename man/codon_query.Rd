@@ -9,7 +9,8 @@ codon_query(
   annotate_start = F,
   in_frame = F,
   annotate_stop = F,
-  colour = NULL
+  colour = NULL,
+  annotation_label = "Labelled\\nCodons"
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ codon_query(
 \item{annotate_stop}{if true will look for stop codons, or can be vector of strings to specify codons.}
 
 \item{colour}{a string consisting of the colour to plot the annotated codons in}
+
+\item{annotation_label}{name of the plot tracks, defaults to "Labelled Codons"}
 }
 \value{
 a named list of set codon queries for use in the codon_queries option of the orf_plot function

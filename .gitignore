@@ -5,5 +5,6 @@ NTN4_ENST00000343702_tracks.bed
 tracks.RData
 debug_log.txt
 test_inspectorORF.R
+*.bak
 /doc/
 /Meta/

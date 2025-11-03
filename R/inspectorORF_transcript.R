@@ -23,7 +23,7 @@ setClass(
 
 # .add_introns <- function(tracks, read_names)
 # {
-#   introns_to_add <- tracks@tracks |> filter(at_exon_end == T) |> pull(introns_to_add, exon_position)
+#   introns_to_add <- tracks@tracks |> filter(at_exon_end == T) |> pull(introns_to_add, genomic_position)
 #
 #   if (length(introns_to_add) == 1)
 #   {
@@ -53,7 +53,7 @@ setClass(
 
 # .splice_plot <- function(transcript_data)
 # {
-#   # frame <- transcript_data |> dplyr::filter(exon_position == start_position) |> dplyr::pull(framing)
+#   # frame <- transcript_data |> dplyr::filter(genomic_position == start_position) |> dplyr::pull(framing)
 #
 #   intron_junctions <- transcript_data |> filter(at_exon_end == T)
 #   intron_count <- intron_junctions |> nrow()

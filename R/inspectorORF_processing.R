@@ -399,7 +399,8 @@ get_gene_tracks <- function(
 #'   genome_file = system.file("example_data", "chr12.2bit", package = "inspectorORF"),
 #'   transcript_ids = c("ENST00000343702.9")
 #' )
-#' @importFrom dplyr arrange mutate ungroup group_by left_join n desc
+#' @importFrom dplyr arrange mutate ungroup group_by left_join n desc across everything if_else
+#' @importFrom tidyr replace_na
 #' @importFrom plyranges join_overlap_inner_within_directed
 #' @importFrom methods as
 #' @importFrom GenomicRanges mcols
@@ -454,11 +455,23 @@ get_transcript_tracks <- function(
   {
     tracks <- lapply(tracks, function(tx_tracks)
     {
-      stop("need to fix exonic positions")
       as.data.frame(tx_tracks) |>
-        dplyr::left_join(additional_info, by = c("transcript_id", "exon_position" = "position")) |>
-        dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0))) |>
-        as("GRanges") |> as("UCSCData")
+      dplyr::group_by(transcript_id) |>
+      dplyr::mutate(exon_position = dplyr::if_else(is_intron, NA_integer_, cumsum(!is_intron))) |>
+      dplyr::ungroup() |>
+      dplyr::left_join(
+        additional_info,
+        by = c("transcript_id", "exon_position" = "position")
+      ) |>
+      dplyr::select(-c(exon_position)) |>
+      dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0))) |>
+      as("GRanges") |>
+      as("UCSCData")
+      # stop("need to fix exonic positions")
+      # as.data.frame(tx_tracks) |>
+      #   dplyr::left_join(additional_info, by = c("transcript_id", "genomic_position" = "position")) |>
+      #   dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0))) |>
+      #   as("GRanges") |> as("UCSCData")
   	}) |> as("GRangesList")
   }
 
@@ -503,7 +516,7 @@ get_transcript_tracks <- function(
   #     dplyr::group_by(transcript_id) |>
   #     dplyr::mutate(
   #       end = start,
-  #       exon_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
+  #       genomic_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
   #       og_framing = dplyr::case_when(
   #         is_intron ~ "intron",
   #         TRUE ~ as.character(exon_frame)
@@ -528,7 +541,7 @@ get_transcript_tracks <- function(
   #       transcript_id,
   #       name,
   #       score,
-  #       exon_position,
+  #       genomic_position,
   #       og_framing,
   #       framing,
   #       feature_number
