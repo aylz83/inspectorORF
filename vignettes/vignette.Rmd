@@ -255,7 +255,7 @@ Again, although reads are within the highlighted coding sequence, such reads are
 
 Evaluating P-sites and triplet periodicity of reads outside of the ORF compared to the triplet periodicity within the ORF ($\text{Full transcript P-sites} - \text{ORF P-sites}$) can be helpful to understand the likelihood the ORF is being translated. As such, if triplet periodicity is present within the ORF, with reads primarily consisting of the ORFs frame, but triplet periodicity is lacking within the remainder of the transcript, this can give some confidence in the ORF truly being translated.
 
-An additional triplet periodicity summary plot for the remainder of the transcript can be enabled with the `plot_transcript_summary = TRUE`:
+An additional triplet periodicity summary plot for the remainder of the transcript can be enabled with the `summarise_outside_orf = TRUE`:
 
 ```{r summary_tx_plot, fig.width = 10, fig.height = 4}
 inspectorORF::transcript_plot(
@@ -264,7 +264,7 @@ inspectorORF::transcript_plot(
 	start_position = 456,
 	stop_position = 2339,
 	scale_to_psites = T,
-	plot_transcript_summary = T
+	summarise_outside_orf = T
 )
 ```
 
@@ -703,7 +703,7 @@ inspectorORF::orf_plot(
 	start_position = 456,
 	stop_position = 2339,
 	scale_to_psites = T,
-	plot_transcript_summary = T,
+	summarise_outside_orf = T,
 	plot_region = c(-1, -1),
 	text_size = 14,
 	condition_names = c("rna_reads" = "Control",
