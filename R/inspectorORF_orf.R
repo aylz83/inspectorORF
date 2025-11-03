@@ -362,7 +362,7 @@ codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame =
 #' @param plot_region an optional tuple consisting of a region of 5'utr and 3'utr to plot
 #' @param plot_colours The custom colour scheme to use for frame 0, 1 and 2 (optional)
 #' @param scale_to_psites Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this
-#' @param plot_transcript_summary Should the remaining P-sites for the full transcript (excluding those in the ORF) be plot
+#' @param summarise_outside_orf Plots a summary of P-site reads for region outside the ORF
 #' @param codon_queries a list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot
 #' @param condition_names Names of any datasets to plot, useful when plotting bed file which consists of reads from multiple datasets
 #' @param plot_read_pairs Which RNA-Seq reads are associated with which P-Site reads. See example for further info
@@ -394,7 +394,7 @@ orf_plot <- function(
   plot_region = c(start_position, stop_position),
   plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
   scale_to_psites = F,
-  plot_transcript_summary = F,
+  summarise_outside_orf = F,
   codon_queries = NULL,
   condition_names = c("rna_reads" = ""),
   plot_read_pairs = c("p_sites" = "rna_reads"),
@@ -415,7 +415,7 @@ orf_plot <- function(
     plot_colours,
     scale_to_psites,
     split_exons = F,
-    plot_transcript_summary,
+    summarise_outside_orf,
     codon_queries,
     condition_names,
     plot_read_pairs,

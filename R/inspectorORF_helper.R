@@ -861,7 +861,7 @@
   track_to_plot <- track_to_plot |> drop_na()
   read_names <- read_names[names(read_names) %in% track_to_plot$name]
 
-  track_to_plot$region <- factor(track_to_plot$region, levels = c("ORF", "Region", "Transcript", "Rest of Transcript"))
+  track_to_plot$region <- factor(track_to_plot$region, levels = c("ORF", "Region", "Transcript", "Outside of ORF"))
 
   read_names[names(read_names)] <- paste(read_names[names(read_names)], "P-Sites")
 
@@ -1260,7 +1260,7 @@
   {
     rest_of_transcript <- track_to_plot |>
       dplyr::filter(!(genomic_position %in% orf_tracks$genomic_position)) |>
-      dplyr::mutate(region = "Rest of Transcript")
+      dplyr::mutate(region = "Outside of ORF")
 
     combined_tracks <- dplyr::bind_rows(orf_tracks, rest_of_transcript)
   }
