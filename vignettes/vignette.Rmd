@@ -9,6 +9,7 @@ output:
     highlight: default
     framework: bootstrap
     css: wide.css
+always_allow_html: true
 
 vignette: >
   %\VignetteIndexEntry{Summarising Ribo-Seq and RNA-Seq reads within open reading frames with inspectorORF}
@@ -58,6 +59,8 @@ detach_package <- function(pkg, character.only = FALSE)
 
 detach_package("inspectorORF", TRUE)
 
+library(IRanges)
+library(GenomicRanges)
 library(inspectorORF)
 library(tidyverse)
 library(DT)
@@ -416,7 +419,7 @@ inspectorORF::orf_plot(
 
 If the data was prepared with either multiple conditions or multiple replicates, inspectorORF supports plotting multiple figures of the same ORF for more than one condition. For example:
 
-```{r orf_plot_multiple_conditions_named, fig.width = 10, fig.height = 6}
+```{r orf_plot_multiple_conditions, fig.width = 10, fig.height = 6}
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
@@ -490,7 +493,7 @@ Kozak scores can be calculated using [ORFik](https://www.bioconductor.org/packag
 
 Finally, the transcript tracks for the additional genomic and transcriptomic level data can be obtained and plotted.
 
-```{r plot_additional_tx_level_data, fig.width = 10, fig.height = 8}
+```{r plot_additional_tx_data, fig.width = 10, fig.height = 8}
 # Obtain transcript tracks for ENST00000343702.9 along with our additional scores
 tx_tracks <- inspectorORF::get_transcript_tracks(
 	tracks,
@@ -583,83 +586,9 @@ inspectorORF::orf_plot(
 )
 ```
 
-When annotating codons, stop codons can also be included with `annotate_stop = TRUE`. This can be particularly useful when annotating in-frame start codons across the transcript to indicate alternative ORFs which are possibly translated.
-
-```{r orf_plot_annotate_stop_codons, fig.width = 10, fig.height = 8}
-inspectorORF::orf_plot(
-	tx_tracks,
-	transcript_filter = "ENST00000343702.9",
-	start_position = 456,
-	stop_position = 2339,
-	scale_to_psites = T,
-	condition_names = c("rna_reads" = "Control",
-						"treated_rna_reads" = "Treated"),
-	plot_read_pairs = c("p_sites" = "rna_reads",
-						"treated_psites" = "treated_rna_reads"),
-	# Declare names for the RNA and P-Site reads, including the additional
-	# dRNA_reads, KSS and MS data for them to be included on the plot
-	dataset_names = c("rna_reads" = "RNA-Seq Reads",
-					"p_sites" = "P-Sites",
-					"treated_rna_reads" = "RNA-Seq Reads",
-					"treated_psites" = "P-Sites",
-					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
-					"KSS" = "AUG Kozak scores",
-					"MS" = "Proteomics"),
-	# State the colours for the additional data
-	plot_colours = c("rna_reads" = "grey60",
-					"treated_rna_reads" = "grey60",
-					"treated_dRNA_reads" = "orange",
-					"KSS" = "hotpink4",
-					"MS" = "black",
-					"0" = "#440854",
-					"1" = "#23A884",
-					"2" = "#FEE725"),
-	codon_queries = list(
-		inspectorORF::codon_query(in_frame = T, annotate_stop = T, colour = "darkred")
-	)
-)
-```
-
-By default, `annotate_stop = TRUE` will search for all three possible stop codons (UAA, UAG and UGA). `annotate_stop` also accepts a character vector to search for specific stop codons instead -
-
-```{r orf_plot_annotate_specific_stop_codons, fig.width = 10, fig.height = 8}
-inspectorORF::orf_plot(
-	tx_tracks,
-	transcript_filter = "ENST00000343702.9",
-	start_position = 456,
-	stop_position = 2339,
-	scale_to_psites = T,
-	condition_names = c("rna_reads" = "Control",
-						"treated_rna_reads" = "Treated"),
-	plot_read_pairs = c("p_sites" = "rna_reads",
-						"treated_psites" = "treated_rna_reads"),
-	# Declare names for the RNA and P-Site reads, including the additional
-	# dRNA_reads, KSS and MS data for them to be included on the plot
-	dataset_names = c("rna_reads" = "RNA-Seq Reads",
-					"p_sites" = "P-Sites",
-					"treated_rna_reads" = "RNA-Seq Reads",
-					"treated_psites" = "P-Sites",
-					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
-					"KSS" = "AUG Kozak scores",
-					"MS" = "Proteomics"),
-	# State the colours for the additional data
-	plot_colours = c("rna_reads" = "grey60",
-					"treated_rna_reads" = "grey60",
-					"treated_dRNA_reads" = "orange",
-					"KSS" = "hotpink4",
-					"MS" = "black",
-					"0" = "#440854",
-					"1" = "#23A884",
-					"2" = "#FEE725"),
-	codon_queries = list(
-		inspectorORF::codon_query(in_frame = T, annotate_stop = c("UAG"), colour = "darkred")
-	)
-)
-```
-
 Additionally, codons can be coloured based on the frame the codon is found in, by setting "use_framing" as the colour option. Allowing out of frame codons can be useful here too, although in this case, this results in a fairly noisy plot:
 
-```{r orf_plot_annotate_framing_codons, fig.width = 10, fig.height = 8}
+```{r orf_plot_framing_codons, fig.width = 10, fig.height = 8}
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
@@ -696,7 +625,7 @@ inspectorORF::orf_plot(
 
 As can be seen in the plot, there are many AUG start codons within the ORF, consisting of various frames. Such codons can also be plotted within the UTRs, to evaluate potential upstream alternative initiation sites. Or we can evaluate in-frame codons, across the whole transcript:
 
-```{r orf_plot_annotate_framing_codons_full_tx, fig.width = 10, fig.height = 8}
+```{r orf_plot_framing_codons_tx, fig.width = 10, fig.height = 8}
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
@@ -775,6 +704,125 @@ inspectorORF::orf_plot(
 		inspectorORF::codon_query(annotate_start = T, colour = "black"),
 		inspectorORF::codon_query(annotation_codons = c("AUG"), in_frame = T, colour = "darkred"),
 		inspectorORF::codon_query(annotation_codons = c("CUG"), in_frame = T, colour = "darkgreen")
+	)
+)
+```
+
+When annotating codons, stop codons can also be included with `annotate_stop = TRUE`. This can be particularly useful when annotating in-frame start codons across the transcript to indicate alternative ORFs which are possibly translated.
+
+```{r orf_plot_annotate_stop, fig.width = 10, fig.height = 8}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	plot_region = c(-1, -1),
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725"),
+	codon_queries = list(
+		inspectorORF::codon_query(in_frame = T, annotate_stop = T, colour = "darkred")
+	)
+)
+```
+
+By default, `annotate_stop = TRUE` will search for all three possible stop codons (UAA, UAG and UGA). `annotate_stop` also accepts a character vector to search for specific stop codons instead -
+
+```{r orf_plot_stop_alt, fig.width = 10, fig.height = 8}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	plot_region = c(-1, -1),
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725"),
+	codon_queries = list(
+		inspectorORF::codon_query(in_frame = T, annotate_stop = c("UAG"), colour = "darkred")
+	)
+)
+```
+
+Annotated codons can also be plot on their on track facet, which is particularly useful in the case of lots of codons. This can be enabled by naming the codon query with `annotation_label = "My Codons"`.
+
+By default, all annotated codons will be within the same track facet titled 'Labelled Codons'
+
+```{r orf_plot_labelled_codons, fig.width = 10, fig.height = 8}
+inspectorORF::orf_plot(
+	tx_tracks,
+	transcript_filter = "ENST00000343702.9",
+	start_position = 456,
+	stop_position = 2339,
+	scale_to_psites = T,
+	# Add 5'UTR region from start of transcript
+	plot_region = c(-1, NA),
+	condition_names = c("rna_reads" = "Control",
+						"treated_rna_reads" = "Treated"),
+	plot_read_pairs = c("p_sites" = "rna_reads",
+						"treated_psites" = "treated_rna_reads"),
+	# Declare names for the RNA and P-Site reads, including the additional
+	# dRNA_reads, KSS and MS data for them to be included on the plot
+	dataset_names = c("rna_reads" = "RNA-Seq Reads",
+					"p_sites" = "P-Sites",
+					"treated_rna_reads" = "RNA-Seq Reads",
+					"treated_psites" = "P-Sites",
+					"treated_dRNA_reads" = "Treated dRNA-Seq Reads",
+					"KSS" = "AUG Kozak scores",
+					"MS" = "Proteomics"),
+	# State the colours for the additional data
+	plot_colours = c("rna_reads" = "grey60",
+					"treated_rna_reads" = "grey60",
+					"treated_dRNA_reads" = "orange",
+					"KSS" = "hotpink4",
+					"MS" = "black",
+					"0" = "#440854",
+					"1" = "#23A884",
+					"2" = "#FEE725"),
+	codon_queries = list(
+		inspectorORF::codon_query(annotate_start = T, colour = "black"),
+		inspectorORF::codon_query(annotation_codons = c("AUG"), in_frame = T, colour = "darkred"),
+		inspectorORF::codon_query(annotation_codons = c("CUG"), in_frame = T, colour = "darkgreen", annotation_label = "CUG Codons")
 	)
 )
 ```

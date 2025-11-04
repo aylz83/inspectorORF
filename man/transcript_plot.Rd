@@ -21,7 +21,6 @@ transcript_plot(
   dataset_names = c(rna_reads = "RNA-Seq Reads", intron = "Intronic RNA-Seq Reads",
     intron_psite = "Intronic P-Sites", p_sites = "P-Sites"),
   one_plot = T,
-  interactive = F,
   legend_position = "bottom",
   text_size = 12
 )
@@ -54,8 +53,6 @@ transcript_plot(
 \item{dataset_names}{Custom naming to display on the plot for any read type}
 
 \item{one_plot}{Should a combined figure be returned or individual figures for main plot and any triplet periodicity plots}
-
-\item{interactive}{Enable to return an interactive plotly figure}
 
 \item{legend_position}{Location of the legend within the figure}
 

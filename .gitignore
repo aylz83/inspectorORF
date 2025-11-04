@@ -8,3 +8,6 @@ test_inspectorORF.R
 *.bak
 /doc/
 /Meta/
+*glow*
+Rplots.pdf
+

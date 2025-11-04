@@ -58,12 +58,7 @@ devtools::install_github("aylz83/inspectorORF")
  - methods
  - stats
  - grid
-
  - R.utils is also required for opening gzip compressed bed files.
-
-## Optional dependencies for interactive plots
-
- - plotly
 
 ## Optional dependencies for the shiny interface
 

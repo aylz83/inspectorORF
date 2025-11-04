@@ -16,7 +16,6 @@ Suggests:
     tidyverse,
     shiny,
     shinyjs,
-    plotly,
     reactable,
     shinyFiles,
     shinycssloaders,

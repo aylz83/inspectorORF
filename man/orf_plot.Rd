@@ -19,7 +19,6 @@ orf_plot(
   condition_names = c(rna_reads = ""),
   plot_read_pairs = c(p_sites = "rna_reads"),
   dataset_names = c(rna_reads = "RNA-Seq Reads", p_sites = "P-Sites"),
-  interactive = F,
   one_plot = T,
   legend_position = "bottom",
   text_size = 12
@@ -51,8 +50,6 @@ orf_plot(
 \item{plot_read_pairs}{Which RNA-Seq reads are associated with which P-Site reads. See example for further info}
 
 \item{dataset_names}{Custom naming to display on the plot for any read type}
-
-\item{interactive}{Enable to return an interactive plotly figure}
 
 \item{one_plot}{Should a combined figure be returned or individual figures for main plot and any triplet periodicity plots}
 

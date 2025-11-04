@@ -367,7 +367,6 @@ codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame =
 #' @param condition_names Names of any datasets to plot, useful when plotting bed file which consists of reads from multiple datasets
 #' @param plot_read_pairs Which RNA-Seq reads are associated with which P-Site reads. See example for further info
 #' @param dataset_names Custom naming to display on the plot for any read type
-#' @param interactive Enable to return an interactive plotly figure
 #' @param one_plot Should a combined figure be returned or individual figures for main plot and any triplet periodicity plots
 #' @param legend_position Location of the legend within the figure
 #' @param text_size Text size within the figure
@@ -399,7 +398,6 @@ orf_plot <- function(
   condition_names = c("rna_reads" = ""),
   plot_read_pairs = c("p_sites" = "rna_reads"),
   dataset_names = c("rna_reads" = "RNA-Seq Reads", "p_sites" = "P-Sites"),
-  interactive = F,
   one_plot = T,
   legend_position = "bottom",
   text_size = 12
@@ -421,7 +419,6 @@ orf_plot <- function(
     plot_read_pairs,
     dataset_names,
     one_plot,
-    interactive,
     legend_position,
     text_size,
     .tx_plot = F

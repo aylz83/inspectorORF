@@ -1002,7 +1002,6 @@
   plot_read_pairs,
   dataset_names,
   one_plot,
-  interactive,
   legend_position,
   text_size,
   .tx_plot,
@@ -1284,40 +1283,14 @@
 
   plot_figure_width <- c(3, 0.75)
 
-  if (interactive && requireNamespace("plotly", quietly = TRUE))
-  {
-    plot_list <- lapply(plot_list, plotly::ggplotly)
-  }
-  else if (interactive)
-  {
-    message("Plotly not installed - falling back to static figure.")
-  }
-
   if (one_plot)
   {
-    if (interactive && requireNamespace("plotly", quietly = TRUE))
-    {
-      return(
-        plotly::subplot(
-          plot_list,
-          nrows = 1,
-          ncols = length(plot_list),
-          shareX = FALSE,
-          shareY = FALSE,
-          titleX = TRUE,
-          titleY = TRUE
-        )
-      )
-    }
-    else
-    {
-      patchwork_plot <- patchwork::wrap_plots(plot_list, nrow = 1, widths = plot_figure_width) +
-        # patchwork::plot_layout(guides = "collect") #+
-        patchwork::plot_annotation()
-        # theme(legend.position = "bottom")
+    patchwork_plot <- patchwork::wrap_plots(plot_list, nrow = 1, widths = plot_figure_width) +
+      # patchwork::plot_layout(guides = "collect") #+
+      patchwork::plot_annotation()
+      # theme(legend.position = "bottom")
 
-      return(patchwork_plot)
-    }
+    return(patchwork_plot)
   }
 
   plot_list
