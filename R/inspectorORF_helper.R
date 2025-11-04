@@ -1218,7 +1218,6 @@
   {
     codon_labels <- setNames(unique(codon_queries$annotation_label), unique(codon_queries$name))
     plot_labels <- c(plot_labels, codon_labels)
-    print(plot_labels)
   }
 
   # obtain the tracks to plot
