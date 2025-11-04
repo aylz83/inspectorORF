@@ -426,135 +426,135 @@ get_transcript_tracks <- function(
 
   # exon_info <- gtf_annotation |> plyranges::filter(type == "exon" & transcript_id %in% unique(transcript_ids))
 
-  # read_names_count <- GenomicRanges::mcols(tracks) |> colnames() |> unique() |> length()
+  read_names_count <- GenomicRanges::mcols(tracks) |> colnames() |> unique() |> length()
 
-  # tracks_list <- plyranges::join_overlap_inner_within_directed(tracks, exon_info, maxgap = -1L, minoverlap = 0L)
-  # tracks_list <- split(tracks_list, tracks_list$transcript_id)
+  tracks_list <- plyranges::join_overlap_inner_within_directed(tracks, exon_info, maxgap = -1L, minoverlap = 0L)
+  tracks_list <- split(tracks_list, tracks_list$transcript_id)
 
-  tracks <- as.data.frame(tracks)
-
-  score_cols <- setdiff(
-  	colnames(tracks),
-  	c("seqnames", "start", "end", "strand", "transcript_id")
-  )
-
-  read_names_count <- length(score_cols)
-
-  tracks <- tracks |>
-    tidyr::pivot_longer(
-      cols = dplyr::all_of(score_cols),
-      names_to = "name",
-      values_to = "score"
-    ) |>
-    dplyr::mutate(end = start) |>
-    as("GRanges")
-
-  tracks <- .get_tracks(tracks, exon_info, read_names_count, framed_tracks)
-
-  if (!is.null(additional_info))
-  {
-    tracks <- lapply(tracks, function(tx_tracks)
-    {
-      as.data.frame(tx_tracks) |>
-      dplyr::group_by(transcript_id) |>
-      dplyr::mutate(exon_position = dplyr::if_else(is_intron, NA_integer_, cumsum(!is_intron))) |>
-      dplyr::ungroup() |>
-      dplyr::left_join(
-        additional_info,
-        by = c("transcript_id", "exon_position" = "position")
-      ) |>
-      dplyr::select(-c(exon_position)) |>
-      dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0))) |>
-      as("GRanges") |>
-      as("UCSCData")
-      # stop("need to fix exonic positions")
-      # as.data.frame(tx_tracks) |>
-      #   dplyr::left_join(additional_info, by = c("transcript_id", "genomic_position" = "position")) |>
-      #   dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0))) |>
-      #   as("GRanges") |> as("UCSCData")
-  	}) |> as("GRangesList")
-  }
-
-  # tracks <- lapply(tracks_list, function(new_tracks)
+  # tracks <- as.data.frame(tracks)
+  #
+  # score_cols <- setdiff(
+  # 	colnames(tracks),
+  # 	c("seqnames", "start", "end", "strand", "transcript_id")
+  # )
+  #
+  # read_names_count <- length(score_cols)
+  #
+  # tracks <- tracks |>
+  #   tidyr::pivot_longer(
+  #     cols = dplyr::all_of(score_cols),
+  #     names_to = "name",
+  #     values_to = "score"
+  #   ) |>
+  #   dplyr::mutate(end = start) |>
+  #   as("GRanges")
+  #
+  # tracks <- .get_tracks(tracks, exon_info, read_names_count, framed_tracks)
+  #
+  # if (!is.null(additional_info))
   # {
-  #   transcript_tracks <- new_tracks |> as.data.frame() |>
-  #     dplyr::select(-c(setdiff(colnames(mcols(exon_info)), c("transcript_id", "feature_number"))))
-  #
-  #   if (transcript_tracks$strand[[1]] == "-")
+  #   tracks <- lapply(tracks, function(tx_tracks)
   #   {
-  #     transcript_tracks <- transcript_tracks |> dplyr::arrange(dplyr::desc(start))
-  #   }
-  #   else
-  #   {
-  #     transcript_tracks <- transcript_tracks |> dplyr::arrange(start)
-  #   }
-  #
-  #   score_names <- colnames(GenomicRanges::mcols(tracks))
-  #
-  #   if (!is.null(additional_info))
-  #   {
-  #     read_names_count = read_names_count + length(setdiff(colnames(additional_info), c("transcript_id", "position")))
-  #     score_names <- c(score_names, setdiff(colnames(additional_info), c("transcript_id", "position")))
-  #     transcript_tracks <- transcript_tracks |> dplyr::group_by(transcript_id) |>
-  #       dplyr::mutate(position = dplyr::row_number()) |>
-  #       dplyr::ungroup() |>
-  #       dplyr::left_join(additional_info,
-  #                        by = c("transcript_id", "position")) |>
-  #       dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0)))
-  #   }
-  #
-  #   transcript_tracks <- transcript_tracks |>
+  #     as.data.frame(tx_tracks) |>
   #     dplyr::group_by(transcript_id) |>
-  #     dplyr::mutate(
-  #       is_intron = grepl("intron", feature_number),
-  #       exon_row = ifelse(is_intron, NA, cumsum(!is_intron)),
-  #       exon_frame = ifelse(is_intron, NA, (exon_row - 1) %% 3)
+  #     dplyr::mutate(exon_position = dplyr::if_else(is_intron, NA_integer_, cumsum(!is_intron))) |>
+  #     dplyr::ungroup() |>
+  #     dplyr::left_join(
+  #       additional_info,
+  #       by = c("transcript_id", "exon_position" = "position")
   #     ) |>
-  #     dplyr::ungroup()
-  #
-  #   transcript_tracks <- transcript_tracks |> pivot_longer(cols = score_names, values_to = "score") |>
-  #     dplyr::group_by(transcript_id) |>
-  #     dplyr::mutate(
-  #       end = start,
-  #       genomic_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
-  #       og_framing = dplyr::case_when(
-  #         is_intron ~ "intron",
-  #         TRUE ~ as.character(exon_frame)
-  #       ),
-  #       framing = dplyr::case_when(
-  #         is_intron ~ "intron",
-  #         name %in% framed_tracks ~ as.character(exon_frame),
-  #         TRUE ~ name
-  #       )
-  #
-  #       # feature_number <- .set_feature_order(feature_number)
-  #       # og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
-  #       # framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name)),
-  #       # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
-  #       # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
-  #       ) |>
-  #     dplyr::select(
-  #       seqnames,
-  #       start,
-  #       end,
-  #       strand,
-  #       transcript_id,
-  #       name,
-  #       score,
-  #       genomic_position,
-  #       og_framing,
-  #       framing,
-  #       feature_number
-  #     ) |>
-  #     dplyr::ungroup()
-  #
-  #   ucsc_data <- transcript_tracks |> as("GRanges") |> as("UCSCData")
-  #
-  #   ucsc_data@trackLine@type <- "bed"
-  #   ucsc_data@trackLine@name <- transcript_tracks$transcript_id[1]
-  #
-  #   ucsc_data
-  # }) |> as("GRangesList")
+  #     dplyr::select(-c(exon_position)) |>
+  #     dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0))) |>
+  #     as("GRanges") |>
+  #     as("UCSCData")
+  #     # stop("need to fix exonic positions")
+  #     # as.data.frame(tx_tracks) |>
+  #     #   dplyr::left_join(additional_info, by = c("transcript_id", "genomic_position" = "position")) |>
+  #     #   dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0))) |>
+  #     #   as("GRanges") |> as("UCSCData")
+  # 	}) |> as("GRangesList")
+  # }
+
+  tracks <- lapply(tracks_list, function(new_tracks)
+  {
+    transcript_tracks <- new_tracks |> as.data.frame() |>
+      dplyr::select(-c(setdiff(colnames(mcols(exon_info)), c("transcript_id", "feature_number"))))
+
+    if (transcript_tracks$strand[[1]] == "-")
+    {
+      transcript_tracks <- transcript_tracks |> dplyr::arrange(dplyr::desc(start))
+    }
+    else
+    {
+      transcript_tracks <- transcript_tracks |> dplyr::arrange(start)
+    }
+
+    score_names <- colnames(GenomicRanges::mcols(tracks))
+
+    if (!is.null(additional_info))
+    {
+      read_names_count = read_names_count + length(setdiff(colnames(additional_info), c("transcript_id", "position")))
+      score_names <- c(score_names, setdiff(colnames(additional_info), c("transcript_id", "position")))
+      transcript_tracks <- transcript_tracks |> dplyr::group_by(transcript_id) |>
+        dplyr::mutate(position = dplyr::row_number()) |>
+        dplyr::ungroup() |>
+        dplyr::left_join(additional_info,
+                         by = c("transcript_id", "position")) |>
+        dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0)))
+    }
+
+    transcript_tracks <- transcript_tracks |>
+      dplyr::group_by(transcript_id) |>
+      dplyr::mutate(
+        is_intron = grepl("intron", feature_number),
+        exon_row = ifelse(is_intron, NA, cumsum(!is_intron)),
+        exon_frame = ifelse(is_intron, NA, (exon_row - 1) %% 3)
+      ) |>
+      dplyr::ungroup()
+
+    transcript_tracks <- transcript_tracks |> pivot_longer(cols = score_names, values_to = "score") |>
+      dplyr::group_by(transcript_id) |>
+      dplyr::mutate(
+        end = start,
+        genomic_position = rep(1:(dplyr::n() / read_names_count), each = read_names_count, length.out = dplyr::n()),
+        og_framing = dplyr::case_when(
+          is_intron ~ "intron",
+          TRUE ~ as.character(exon_frame)
+        ),
+        framing = dplyr::case_when(
+          is_intron ~ "intron",
+          name %in% framed_tracks ~ as.character(exon_frame),
+          TRUE ~ name
+        )
+
+        # feature_number <- .set_feature_order(feature_number)
+        # og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
+        # framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name)),
+        # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
+        # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
+        ) |>
+      dplyr::select(
+        seqnames,
+        start,
+        end,
+        strand,
+        transcript_id,
+        name,
+        score,
+        genomic_position,
+        og_framing,
+        framing,
+        feature_number
+      ) |>
+      dplyr::ungroup()
+
+    ucsc_data <- transcript_tracks |> as("GRanges") |> as("UCSCData")
+
+    ucsc_data@trackLine@type <- "bed"
+    ucsc_data@trackLine@name <- transcript_tracks$transcript_id[1]
+
+    ucsc_data
+  }) |> as("GRangesList")
 
   sequences <- .obtain_sequences(exon_info, rtracklayer::TwoBitFile(genome_file))
 
