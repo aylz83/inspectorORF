@@ -8,20 +8,26 @@ codon_query(
   annotation_codons = NULL,
   annotate_start = F,
   in_frame = F,
-  colour = NULL
+  annotate_stop = F,
+  colour = NULL,
+  annotation_label = "Labelled\\nCodons"
 )
 }
 \arguments{
 \item{annotation_codons}{a vector of strings consisting of which codons to search for within the sequence being plot}
 
-\item{annotate_start}{a logical indicating if the start codon should be anotated}
+\item{annotate_start}{a logical indicating if the start codon of the plotted ORF should be anotated}
 
 \item{in_frame}{a logical indicating if the annotation_codons should be in frame to the ORF or not}
 
+\item{annotate_stop}{if true will look for stop codons, or can be vector of strings to specify codons.}
+
 \item{colour}{a string consisting of the colour to plot the annotated codons in}
+
+\item{annotation_label}{name of the plot tracks, defaults to "Labelled Codons"}
 }
 \value{
-a named list
+a named list of set codon queries for use in the codon_queries option of the orf_plot function
 }
 \description{
 A simple wrapper function for a named list to specify codon types you wish to annotate on the ORF/transcript plot

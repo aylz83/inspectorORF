@@ -9,6 +9,7 @@ get_gene_tracks(
   gtf_file,
   genome_file,
   gene_ids,
+  keep_introns = FALSE,
   framed_tracks = c("p_sites")
 )
 }
@@ -20,6 +21,8 @@ get_gene_tracks(
 \item{genome_file}{Path to the genome annotation 2bit file}
 
 \item{gene_ids}{the gene ids of interest}
+
+\item{keep_introns}{should introns be retained during generation of tracks}
 
 \item{framed_tracks}{the name of rows which contain p-site data. Defaults to p_sites.}
 }

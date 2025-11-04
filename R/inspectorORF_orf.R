@@ -147,7 +147,7 @@ find_orfs <- function(transcript_tracks,
   tracks <- transcript_tracks@tracks[[transcript_filter]] |>
     as.data.frame() |>
     dplyr::filter(name == transcript_tracks@framed_tracks[[1]]) |>
-    dplyr::arrange(exon_position)
+    dplyr::arrange(genomic_position)
 
   # Subset the sequence starting from threshold
   sequence <- substr(sequence, start_threshold_filter, nchar(sequence))
@@ -175,24 +175,24 @@ find_orfs <- function(transcript_tracks,
     dplyr::filter(name == transcript_tracks@framed_tracks[[1]])
 
   tracks_df <- tracks_df |>
-    dplyr::left_join(start_codons[, c("position", "is_start")], by = c("exon_position" = "position")) |>
-    dplyr::left_join(stop_codons[, c("position", "is_stop")], by = c("exon_position" = "position")) |>
+    dplyr::left_join(start_codons[, c("position", "is_start")], by = c("genomic_position" = "position")) |>
+    dplyr::left_join(stop_codons[, c("position", "is_stop")], by = c("genomic_position" = "position")) |>
     tidyr::replace_na(list(is_start = FALSE, is_stop = FALSE))
 
   # Get start positions and frames
   start_tracks <- tracks_df |> dplyr::filter(is_start == TRUE)
-  start_positions <- start_tracks$exon_position
+  start_positions <- start_tracks$genomic_position
   start_frames <- start_tracks$framing
 
   # Get downstream in-frame stops
   stop_positions <- mapply(function(start_pos, frame)
   {
     downstream_stops <- tracks_df |>
-      dplyr::filter(exon_position > start_pos, is_stop == TRUE, framing == frame)
+      dplyr::filter(genomic_position > start_pos, is_stop == TRUE, framing == frame)
 
     if (nrow(downstream_stops) > 0)
     {
-      first_stop <- downstream_stops$exon_position[[1]]
+      first_stop <- downstream_stops$genomic_position[[1]]
 
       if ((first_stop - start_pos) >= orf_length_filter)
       {
@@ -313,11 +313,13 @@ find_orfs <- function(transcript_tracks,
 #' A simple wrapper function for a named list to specify codon types you wish to annotate on the ORF/transcript plot
 #'
 #' @param annotation_codons a vector of strings consisting of which codons to search for within the sequence being plot
-#' @param annotate_start a logical indicating if the start codon should be anotated
+#' @param annotate_start a logical indicating if the start codon of the plotted ORF should be anotated
 #' @param in_frame a logical indicating if the annotation_codons should be in frame to the ORF or not
+#' @param annotate_stop if true will look for stop codons, or can be vector of strings to specify codons.
 #' @param colour a string consisting of the colour to plot the annotated codons in
+#' @param annotation_label name of the plot tracks, defaults to "Labelled Codons"
 #'
-#' @return a named list
+#' @return a named list of set codon queries for use in the codon_queries option of the orf_plot function
 #' @export
 #'
 #' @examples
@@ -333,9 +335,21 @@ find_orfs <- function(transcript_tracks,
 #'   codon_queries = list(codon_query(annotate_start = TRUE))
 #' )
 #' test_orf_plot
-codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame = F, colour = NULL)
+codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame = F, annotate_stop = F, colour = NULL, annotation_label = "Labelled\nCodons")
 {
-  list(annotation_codons = annotation_codons, annotate_start = annotate_start, in_frame = in_frame, colour = colour)
+  if (annotate_start == T && !is.null(annotation_codons))
+  {
+    stop("Please specify annotate_start and annotation_codons as separate queries.")
+  }
+
+  list(
+    annotation_codons = annotation_codons,
+    annotate_start = annotate_start,
+    in_frame = in_frame,
+    annotate_stop = annotate_stop,
+    colour = colour,
+    annotation_label = annotation_label
+  )
 }
 
 #' Plot the reads within an ORF of a transcript
@@ -348,12 +362,11 @@ codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame =
 #' @param plot_region an optional tuple consisting of a region of 5'utr and 3'utr to plot
 #' @param plot_colours The custom colour scheme to use for frame 0, 1 and 2 (optional)
 #' @param scale_to_psites Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this
-#' @param plot_transcript_summary Should the remaining P-sites for the full transcript (excluding those in the ORF) be plot
+#' @param summarise_outside_orf Plots a summary of P-site triplet periodicity outside the ORF of interest
 #' @param codon_queries a list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot
 #' @param condition_names Names of any datasets to plot, useful when plotting bed file which consists of reads from multiple datasets
 #' @param plot_read_pairs Which RNA-Seq reads are associated with which P-Site reads. See example for further info
 #' @param dataset_names Custom naming to display on the plot for any read type
-#' @param interactive Enable to return an interactive plotly figure
 #' @param one_plot Should a combined figure be returned or individual figures for main plot and any triplet periodicity plots
 #' @param legend_position Location of the legend within the figure
 #' @param text_size Text size within the figure
@@ -371,43 +384,45 @@ codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame =
 #' )
 #' test_orf_plot
 #' @export
-orf_plot <- function(transcript_tracks,
-                     orf_object = NULL,
-                     transcript_filter = NULL,
-                     start_position = NULL,
-                     stop_position = NULL,
-                     plot_region = c(start_position, stop_position),
-                     plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
-                     scale_to_psites = F,
-                     plot_transcript_summary = F,
-                     codon_queries = NULL,
-                     condition_names = c("rna_reads" = ""),
-                     plot_read_pairs = c("p_sites" = "rna_reads"),
-                     dataset_names = c("rna_reads" = "RNA-Seq Reads",
-                                       "p_sites" = "P-Sites"),
-                     interactive = F,
-                     one_plot = T,
-                     legend_position = "bottom",
-                     text_size = 12)
+orf_plot <- function(
+  transcript_tracks,
+  orf_object = NULL,
+  transcript_filter = NULL,
+  start_position = NULL,
+  stop_position = NULL,
+  plot_region = c(start_position, stop_position),
+  plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
+  scale_to_psites = F,
+  summarise_outside_orf = F,
+  codon_queries = NULL,
+  condition_names = c("rna_reads" = ""),
+  plot_read_pairs = c("p_sites" = "rna_reads"),
+  dataset_names = c("rna_reads" = "RNA-Seq Reads", "p_sites" = "P-Sites"),
+  one_plot = T,
+  legend_position = "bottom",
+  text_size = 12
+)
 {
-  .plot_helper(transcript_tracks,
-               orf_object,
-               transcript_filter,
-               start_position,
-               stop_position,
-               plot_region,
-               plot_colours,
-               scale_to_psites,
-               plot_transcript_summary,
-               codon_queries,
-               condition_names,
-               plot_read_pairs,
-               dataset_names,
-               one_plot,
-               interactive,
-               legend_position,
-               text_size,
-               .tx_plot = F)
+  .plot_helper(
+    transcript_tracks,
+    orf_object,
+    transcript_filter,
+    start_position,
+    stop_position,
+    plot_region,
+    plot_colours,
+    scale_to_psites,
+    split_exons = F,
+    summarise_outside_orf,
+    codon_queries,
+    condition_names,
+    plot_read_pairs,
+    dataset_names,
+    one_plot,
+    legend_position,
+    text_size,
+    .tx_plot = F
+  )
 }
 
 #' Extract the nucleotide seqeunce of an ORF within a transcript
@@ -573,8 +588,8 @@ get_orf_framing <- function(transcript_tracks,
 
   transcript_tracks@tracks[[transcript_filter]] |>
     dplyr::filter(name == transcript_tracks@framed_tracks &
-                    exon_position > (start_position - 1) &
-                    exon_position < (stop_position + 1)) |>
+                    genomic_position > (start_position - 1) &
+                    genomic_position < (stop_position + 1)) |>
     dplyr::group_by(framing) |>
     dplyr::summarise(totals = sum(score))
 }

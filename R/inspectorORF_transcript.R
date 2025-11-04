@@ -23,7 +23,7 @@ setClass(
 
 # .add_introns <- function(tracks, read_names)
 # {
-#   introns_to_add <- tracks@tracks |> filter(at_exon_end == T) |> pull(introns_to_add, exon_position)
+#   introns_to_add <- tracks@tracks |> filter(at_exon_end == T) |> pull(introns_to_add, genomic_position)
 #
 #   if (length(introns_to_add) == 1)
 #   {
@@ -53,7 +53,7 @@ setClass(
 
 # .splice_plot <- function(transcript_data)
 # {
-#   # frame <- transcript_data |> dplyr::filter(exon_position == start_position) |> dplyr::pull(framing)
+#   # frame <- transcript_data |> dplyr::filter(genomic_position == start_position) |> dplyr::pull(framing)
 #
 #   intron_junctions <- transcript_data |> filter(at_exon_end == T)
 #   intron_count <- intron_junctions |> nrow()
@@ -101,11 +101,25 @@ setClass(
 #' )
 #' print(inspectorORF::get_transcripts_for_gene(
 #'   gene_tracks,
-#'   gene_filter = "ENSG00000074527.1"
+#'   gene_filter = "ENSG00000074527.13"
 #' ))
 #' @importFrom dplyr filter pull
-get_transcripts_for_gene <- function(gene_tracks, gene_filter)
+#' @importFrom GenomicRanges mcols
+get_transcripts_for_gene <- function(
+  gene_tracks,
+  gene_filter
+)
 {
+  if (length(gene_filter) > 1)
+  {
+    stop("gene_filter must contain one gene only.")
+  }
+
+  if (!(gene_filter %in% unique(GenomicRanges::mcols(gene_tracks@gtf)$gene_id)))
+  {
+    stop(paste0("Gene ", gene_filter, " not found within the gene tracks."))
+  }
+
   gene_tracks@gtf |> as.data.frame() |>
     dplyr::filter(gene_id == gene_filter) |>
     dplyr::pull(transcript_id) |>
@@ -117,6 +131,7 @@ get_transcripts_for_gene <- function(gene_tracks, gene_filter)
 #' @param bed_file The bed file containing the ORF tracks, each track must contain the trackline of a transcript_id
 #' @param gtf_file The path to the gtf file
 #' @param genome_file The path to the genome fasta or 2bit file
+#' @param keep_introns should introns be retained during generation of tracks
 #' @param framed_tracks The track line consisting of the P-site reads (defaults to p_sites)
 #'
 #' @return An inspectorORF_txtracks object consisting of the relevant reads
@@ -131,10 +146,13 @@ get_transcripts_for_gene <- function(gene_tracks, gene_filter)
 #' @importFrom dplyr bind_rows distinct
 #' @importClassesFrom rtracklayer TwoBitFile
 #' @importFrom methods as new
-import_transcript_bed <- function(bed_file,
-                                  gtf_file,
-                                  genome_file,
-                                  framed_tracks = c("p_sites"))
+import_transcript_bed <- function(
+  bed_file,
+  gtf_file,
+  genome_file,
+  keep_introns = F,
+  framed_tracks = c("p_sites")
+)
 {
   bed_tracks <- .import_bed_hack(bed_file)
 
@@ -143,6 +161,13 @@ import_transcript_bed <- function(bed_file,
   bed_tracks <- dplyr::bind_rows(bed_tracks) |> dplyr::distinct() |> as("GRanges")
 
   gtf_data <- .import_gtf(gtf_file, track_ids, track_type = "transcript_id")
+
+  GenomicRanges::mcols(gtf_data)$feature_number <- paste0("exon_", GenomicRanges::mcols(gtf_data)$exon_number)
+
+  if (keep_introns)
+  {
+    gtf_data <- .add_introns(gtf_data)
+  }
 
   transcript_ids <- gtf_data$transcript_id |> unique()
 
@@ -178,19 +203,28 @@ import_transcript_bed <- function(bed_file,
 #'   transcript_filter = c("ENST00000343702.9", "ENST00000344911.8")
 #' )
 #' @importFrom plyranges filter
-gene_to_transcript_tracks <- function(gene_tracks,
-									  transcript_filter)
+gene_to_transcript_tracks <- function(
+  gene_tracks,
+  transcript_filter
+)
 {
   gtf_subset <- gene_tracks@gtf |>
     plyranges::filter(transcript_id %in% transcript_filter)
+
+  if (length(gtf_subset) == 0)
+  {
+    stop("No supplied transcripts were found within the gene tracks.")
+  }
+
+  tracks <- unlist(gene_tracks@tracks, use.names = FALSE)
 
   transcript_ids <- gtf_subset$transcript_id |> unique()
 
   sequences <- .obtain_sequences(gtf_subset, gene_tracks@genome_file)
 
-  read_names_count <- gene_tracks@tracks$name |> unique() |> length()
+  read_names_count <- tracks$name |> unique() |> length()
 
-  tracks <- .get_tracks(gene_tracks@tracks, gtf_subset, read_names_count, gene_tracks@framed_tracks)
+  tracks <- .get_tracks(tracks, gtf_subset, read_names_count, gene_tracks@framed_tracks)
 
   new("inspectorORF_txtracks",
       transcript_ids = transcript_ids,
@@ -210,12 +244,12 @@ gene_to_transcript_tracks <- function(gene_tracks,
 #' @param stop_position The stop location of the ORF to highlight, if omitted, the nearest downstream, in-frame stop codon from the supplied start position will be used.
 #' @param plot_colours The colour scheme for frame 0, 1 and 2 (optional).
 #' @param scale_to_psites Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this
-#' @param plot_transcript_summary Should the remaining P-sites for the full transcript (excluding those in the ORF) be plot
+#' @param split_exons separate regions by exon if TRUE, include plotting of intron regions if set to "with_introns" assuming keep_introns was set to TRUE when generating tracks. - not compatible with adding ORF regions
+#' @param summarise_outside_region Plots a summary of P-site triplet periodicity outside of the region of interest
 #' @param codon_queries an optional list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot
 #' @param condition_names Names of any datasets to plot, useful when plotting bed file which consists of reads from multiple datasets
 #' @param plot_read_pairs Which RNA-Seq reads are associated with which P-Site reads. See example for further info
 #' @param dataset_names Custom naming to display on the plot for any read type
-#' @param interactive Enable to return an interactive plotly figure
 #' @param one_plot Should a combined figure be returned or individual figures for main plot and any triplet periodicity plots
 #' @param legend_position Location of the legend within the figure
 #' @param text_size Text size within the figure
@@ -240,40 +274,56 @@ gene_to_transcript_tracks <- function(gene_tracks,
 #'   start_position = 10,
 #'   stop_position = 30
 #' )
-transcript_plot <- function(transcript_tracks,
-                            orf_object = NULL,
-                            transcript_filter = NULL,
-                            start_position = NULL,
-                            stop_position = NULL,
-                            plot_colours = c("rna_reads" = "grey60", "0" = "#440854", "1" = "#23A884", "2" = "#FEE725"),
-                            scale_to_psites = F,
-                            plot_transcript_summary = F,
-                            codon_queries = NULL,
-                            condition_names = c("rna_reads" = ""),
-                            plot_read_pairs = c("p_sites" = "rna_reads"),
-                            dataset_names = c("rna_reads" = "RNA-Seq Reads",
-                                              "p_sites" = "P-Sites"),
-                            one_plot = T,
-                            interactive = F,
-                            legend_position = "bottom",
-                            text_size = 12)
+transcript_plot <- function(
+  transcript_tracks,
+  orf_object = NULL,
+  transcript_filter = NULL,
+  start_position = NULL,
+  stop_position = NULL,
+  plot_colours = c(
+    "rna_reads" = "grey60",
+    "intron" = "grey60",
+    "intron_psite" = "orange",
+    "0" = "#440854",
+    "1" = "#23A884",
+    "2" = "#FEE725"
+  ),
+  scale_to_psites = F,
+  split_exons = F,
+  summarise_outside_region = F,
+  codon_queries = NULL,
+  condition_names = c("rna_reads" = ""),
+  plot_read_pairs = c("p_sites" = "rna_reads"),
+  dataset_names = c(
+    "rna_reads" = "RNA-Seq Reads",
+    "intron" = "Intronic RNA-Seq Reads",
+    "intron_psite" = "Intronic P-Sites",
+    "p_sites" = "P-Sites"
+  ),
+  one_plot = T,
+  legend_position = "bottom",
+  text_size = 12
+)
 {
-  .plot_helper(transcript_tracks,
-           orf_object,
-           transcript_filter,
-           start_position,
-           stop_position,
-           plot_region = c(-1, -1),
-           plot_colours,
-           scale_to_psites,
-           plot_transcript_summary,
-           codon_queries,
-           condition_names,
-           plot_read_pairs,
-           dataset_names,
-           one_plot,
-           interactive,
-           legend_position,
-           text_size,
-           .tx_plot = T)
+  .plot_helper(
+    transcript_tracks,
+    orf_object,
+    transcript_filter,
+    start_position,
+    stop_position,
+    plot_region = c(-1, -1),
+    plot_colours,
+    scale_to_psites,
+    split_exons,
+    summarise_outside_region,
+    codon_queries,
+    condition_names,
+    plot_read_pairs,
+    dataset_names,
+    one_plot,
+    legend_position,
+    text_size,
+    .tx_plot = T,
+    stop_codons = c("UAG", "UAA", "UGA")
+  )
 }

@@ -10,16 +10,17 @@ transcript_plot(
   transcript_filter = NULL,
   start_position = NULL,
   stop_position = NULL,
-  plot_colours = c(rna_reads = "grey60", `0` = "#440854", `1` = "#23A884", `2` =
-    "#FEE725"),
+  plot_colours = c(rna_reads = "grey60", intron = "grey60", intron_psite = "orange", `0`
+    = "#440854", `1` = "#23A884", `2` = "#FEE725"),
   scale_to_psites = F,
-  plot_transcript_summary = F,
+  split_exons = F,
+  summarise_outside_region = F,
   codon_queries = NULL,
   condition_names = c(rna_reads = ""),
   plot_read_pairs = c(p_sites = "rna_reads"),
-  dataset_names = c(rna_reads = "RNA-Seq Reads", p_sites = "P-Sites"),
+  dataset_names = c(rna_reads = "RNA-Seq Reads", intron = "Intronic RNA-Seq Reads",
+    intron_psite = "Intronic P-Sites", p_sites = "P-Sites"),
   one_plot = T,
-  interactive = F,
   legend_position = "bottom",
   text_size = 12
 )
@@ -39,7 +40,9 @@ transcript_plot(
 
 \item{scale_to_psites}{Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this}
 
-\item{plot_transcript_summary}{Should the remaining P-sites for the full transcript (excluding those in the ORF) be plot}
+\item{split_exons}{separate regions by exon if TRUE, include plotting of intron regions if set to "with_introns" assuming keep_introns was set to TRUE when generating tracks. - not compatible with adding ORF regions}
+
+\item{summarise_outside_region}{Plots a summary of P-site triplet periodicity outside of the region of interest}
 
 \item{codon_queries}{an optional list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot}
 
@@ -50,8 +53,6 @@ transcript_plot(
 \item{dataset_names}{Custom naming to display on the plot for any read type}
 
 \item{one_plot}{Should a combined figure be returned or individual figures for main plot and any triplet periodicity plots}
-
-\item{interactive}{Enable to return an interactive plotly figure}
 
 \item{legend_position}{Location of the legend within the figure}
 

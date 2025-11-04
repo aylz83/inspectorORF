@@ -9,6 +9,7 @@ get_transcript_tracks(
   gtf_file,
   genome_file,
   transcript_ids = NULL,
+  keep_introns = FALSE,
   additional_info = NULL,
   framed_tracks = c("p_sites")
 )
@@ -21,6 +22,8 @@ get_transcript_tracks(
 \item{genome_file}{path to a Genome 2bit file}
 
 \item{transcript_ids}{vector of transcript_id(s) to obtain. If NULL, all transcript_ids within the annotation will be used.}
+
+\item{keep_introns}{should introns be retained during generation of tracks}
 
 \item{additional_info}{additional information in GRanges format with transcript level coordinates such as Kozak scores, Mass-spec data etc}
 
