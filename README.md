@@ -60,14 +60,6 @@ devtools::install_github("aylz83/inspectorORF")
  - grid
  - R.utils is also required for opening gzip compressed bed files.
 
-## Optional dependencies for the shiny interface
-
- - shiny
- - reactable
- - shinyFiles
- - shinycssloaders
- - shinydashboard
-
 ## Example Data
 
 - Ribo-Seq and RNA-Seq data was processed from GEO accession [GSE16214](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE16214), aligned to Gencode V44 and subset for the NTN4 gene.

@@ -14,12 +14,6 @@ Suggests:
     knitr,
     rmarkdown,
     tidyverse,
-    shiny,
-    shinyjs,
-    reactable,
-    shinyFiles,
-    shinycssloaders,
-    shinydashboard,
     R.utils
 Config/testthat/edition: 3
 Imports:
