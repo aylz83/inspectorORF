@@ -42,7 +42,7 @@ orf_plot(
 
 \item{scale_to_psites}{Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this}
 
-\item{summarise_outside_orf}{Plots a summary of P-site reads for region outside the ORF}
+\item{summarise_outside_orf}{Plots a summary of P-site triplet periodicity outside the ORF of interest}
 
 \item{codon_queries}{a list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot}
 

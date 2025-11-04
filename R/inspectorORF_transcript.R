@@ -245,7 +245,7 @@ gene_to_transcript_tracks <- function(
 #' @param plot_colours The colour scheme for frame 0, 1 and 2 (optional).
 #' @param scale_to_psites Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this
 #' @param split_exons separate regions by exon if TRUE, include plotting of intron regions if set to "with_introns" assuming keep_introns was set to TRUE when generating tracks. - not compatible with adding ORF regions
-#' @param summarise_outside_orf Plots a summary of P-site reads for region outside the ORF
+#' @param summarise_outside_region Plots a summary of P-site triplet periodicity outside of the region of interest
 #' @param codon_queries an optional list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot
 #' @param condition_names Names of any datasets to plot, useful when plotting bed file which consists of reads from multiple datasets
 #' @param plot_read_pairs Which RNA-Seq reads are associated with which P-Site reads. See example for further info
@@ -291,7 +291,7 @@ transcript_plot <- function(
   ),
   scale_to_psites = F,
   split_exons = F,
-  summarise_outside_orf = F,
+  summarise_outside_region = F,
   codon_queries = NULL,
   condition_names = c("rna_reads" = ""),
   plot_read_pairs = c("p_sites" = "rna_reads"),
@@ -317,7 +317,7 @@ transcript_plot <- function(
     plot_colours,
     scale_to_psites,
     split_exons,
-    summarise_outside_orf,
+    summarise_outside_region,
     codon_queries,
     condition_names,
     plot_read_pairs,

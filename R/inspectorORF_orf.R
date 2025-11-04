@@ -362,7 +362,7 @@ codon_query <- function(annotation_codons = NULL, annotate_start = F, in_frame =
 #' @param plot_region an optional tuple consisting of a region of 5'utr and 3'utr to plot
 #' @param plot_colours The custom colour scheme to use for frame 0, 1 and 2 (optional)
 #' @param scale_to_psites Should the plot be scaled to the highest P-site peak, therefore cutting off any RNA-Seq reads above this
-#' @param summarise_outside_orf Plots a summary of P-site reads for region outside the ORF
+#' @param summarise_outside_orf Plots a summary of P-site triplet periodicity outside the ORF of interest
 #' @param codon_queries a list consisting of one or more inspectorORF::codon_queries() calls, indiciating any codons to be annotated within the plot
 #' @param condition_names Names of any datasets to plot, useful when plotting bed file which consists of reads from multiple datasets
 #' @param plot_read_pairs Which RNA-Seq reads are associated with which P-Site reads. See example for further info
