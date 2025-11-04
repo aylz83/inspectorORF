@@ -35,8 +35,7 @@ Detecting translated open reading frames (ORFs) within Ribo-Seq data often requi
  - Plotting of 5'/3' UTRs.
  - Plotting of individual exons
  - Plotting of exons and introns (if intronic data is available)
- - Annotating codons of interest such as non-canonical or up/downstream start codons, including in-frame stop codons
- - Generation of interactive plots.
+ - Annotating codons of interest such as in-frame or out of frame, non-canonical, up/downstream start codons and stop codons
  - Easy extraction of both the nucleotide and amino-acid sequence from the ORFs
 
 ## Standard workflow
@@ -176,7 +175,7 @@ gene_tracks <- inspectorORF::get_gene_tracks(
 )
 
 # Obtain tracks for specific transcript variants of the NTN4 gene.
-tx_tracks <- inspectorORF::gene_to_transcript_tracks(
+tx_tracks_from_gene <- inspectorORF::gene_to_transcript_tracks(
 	gene_tracks,
 	transcript_filter = c("ENST00000343702.9") # multiple transcript ids supported
 )
@@ -213,6 +212,15 @@ A plot of reads across a full transcript of interest can then be performed the `
 ```{r first_tx_plot, fig.width = 8, fig.height = 4}
 inspectorORF::transcript_plot(
 	tx_tracks,
+	transcript_filter = "ENST00000343702.9" # Requires 1 transcript at a time
+)
+```
+
+or, plot a transcript from tracks created by gene information originally:
+
+```{r first_tx_from_gene_plot, fig.width = 8, fig.height = 4}
+inspectorORF::transcript_plot(
+	tx_tracks_from_gene,
 	transcript_filter = "ENST00000343702.9" # Requires 1 transcript at a time
 )
 ```
