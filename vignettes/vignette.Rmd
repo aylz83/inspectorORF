@@ -227,7 +227,7 @@ inspectorORF::transcript_plot(
 
 Exons making up a transcript can also be plot by splitting the figure into exons with the `split_exons = TRUE` option -
 
-```{r exons_tx_plot, fig.width = 8, fig.height = 4}
+```{r exons_tx_plot, fig.width = 10, fig.height = 4}
 inspectorORF::transcript_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9", # Requires 1 transcript at a time
@@ -317,7 +317,7 @@ my_tx_tracks <- inspectorORF::get_transcript_tracks(
 
 Including and annotating introns within a plot can then be performed by setting the `split_exons` parameter of transcript_plot to "with_introns" -
 
-```{r intron_read_retention_plot, fig.width = 8, fig.height = 4}
+```{r intron_read_retention_plot, fig.width = 10, fig.height = 4}
 inspectorORF::transcript_plot(
 	my_tx_tracks,
 	transcript_filter = "ENST00000343702.9", # Requires 1 transcript at a time

@@ -424,56 +424,10 @@ get_transcript_tracks <- function(
     exon_info <- .add_introns(exon_info)
   }
 
-  # exon_info <- gtf_annotation |> plyranges::filter(type == "exon" & transcript_id %in% unique(transcript_ids))
-
   read_names_count <- GenomicRanges::mcols(tracks) |> colnames() |> unique() |> length()
 
   tracks_list <- plyranges::join_overlap_inner_within_directed(tracks, exon_info, maxgap = -1L, minoverlap = 0L)
   tracks_list <- split(tracks_list, tracks_list$transcript_id)
-
-  # tracks <- as.data.frame(tracks)
-  #
-  # score_cols <- setdiff(
-  # 	colnames(tracks),
-  # 	c("seqnames", "start", "end", "strand", "transcript_id")
-  # )
-  #
-  # read_names_count <- length(score_cols)
-  #
-  # tracks <- tracks |>
-  #   tidyr::pivot_longer(
-  #     cols = dplyr::all_of(score_cols),
-  #     names_to = "name",
-  #     values_to = "score"
-  #   ) |>
-  #   dplyr::mutate(end = start) |>
-  #   as("GRanges")
-  #
-  # tracks <- .get_tracks(tracks, exon_info, read_names_count, framed_tracks)
-  #
-  # if (!is.null(additional_info))
-  # {
-  #   tracks <- lapply(tracks, function(tx_tracks)
-  #   {
-  #     as.data.frame(tx_tracks) |>
-  #     dplyr::group_by(transcript_id) |>
-  #     dplyr::mutate(exon_position = dplyr::if_else(is_intron, NA_integer_, cumsum(!is_intron))) |>
-  #     dplyr::ungroup() |>
-  #     dplyr::left_join(
-  #       additional_info,
-  #       by = c("transcript_id", "exon_position" = "position")
-  #     ) |>
-  #     dplyr::select(-c(exon_position)) |>
-  #     dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0))) |>
-  #     as("GRanges") |>
-  #     as("UCSCData")
-  #     # stop("need to fix exonic positions")
-  #     # as.data.frame(tx_tracks) |>
-  #     #   dplyr::left_join(additional_info, by = c("transcript_id", "genomic_position" = "position")) |>
-  #     #   dplyr::mutate(dplyr::across(dplyr::everything(), ~ tidyr::replace_na(.x, 0))) |>
-  #     #   as("GRanges") |> as("UCSCData")
-  # 	}) |> as("GRangesList")
-  # }
 
   tracks <- lapply(tracks_list, function(new_tracks)
   {
@@ -526,13 +480,7 @@ get_transcript_tracks <- function(
           name %in% framed_tracks ~ as.character(exon_frame),
           TRUE ~ name
         )
-
-        # feature_number <- .set_feature_order(feature_number)
-        # og_framing = as.factor(rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n())),
-        # framing = as.factor(ifelse(name %in% framed_tracks, rep(c(0, 1, 2), each = read_names_count, length.out = dplyr::n()), name)),
-        # at_exon_end = ifelse(strand == "+", start == end_exon & row_number() > read_names_count, start == start_exon & row_number() < (length(new_tracks) - read_names_count)),
-        # introns_to_add = ifelse(at_exon_end == F, NA, round(abs(start_exon - end_exon) / 10)),
-        ) |>
+      ) |>
       dplyr::select(
         seqnames,
         start,
