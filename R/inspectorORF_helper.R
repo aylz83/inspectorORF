@@ -680,9 +680,10 @@
   codons_to_plot <- data.frame(
     codon = names(codons_to_plot),
     genomic_position = codons_to_plot,
-    p_site_framing = (codons_to_plot - 1) %% 3,
-    annotation_label = annotation_label,
     plot_number = plot_number,
+    is_start = is_start,
+    annotation_label = annotation_label,
+    p_site_framing = (codons_to_plot - 1) %% 3,
     name = paste0("annotation_plot_", plot_number)
   )
 
@@ -695,7 +696,7 @@
       dplyr::filter(p_site_framing == ((original_start - 1) %% 3))
   }
 
-  codons_to_plot |> dplyr::mutate(annotation_label = as.factor(annotation_label))
+  codons_to_plot
 }
 
 #' @importFrom dplyr arrange mutate bind_rows distinct
@@ -732,27 +733,27 @@
       codons_to_plot <- .search_for_codons(
         sequence,
         c("UAA", "UAG", "UGA"),
+        query$annotation_label,
+        plot_number,
         original_start,
         start_position,
         stop_position,
-        in_frame = query$in_frame,
-        is_start = F,
-        annotation_label = query$annotation_label,
-        plot_number = plot_number
+        query$in_frame,
+        is_start = F
       )
     }
     else if (is.character(query$annotate_stop))
     {
       codons_to_plot <- .search_for_codons(
-        sequence,
-        query$annotate_stop,
-        original_start,
-        start_position,
-        stop_position,
-        in_frame = query$in_frame,
-        is_start = F,
-        annotation_label = query$annotation_label,
-        plot_number = plot_number
+      	sequence,
+      	query$annotate_stop,
+      	query$annotation_label,
+      	plot_number,
+      	original_start,
+      	start_position,
+      	stop_position,
+      	query$in_frame,
+      	is_start = F
       )
     }
     else if (query$annotate_start == T)
@@ -771,15 +772,15 @@
     else if (!is.null(query$annotation_codons))
     {
       codons_to_plot <- .search_for_codons(
-        sequence,
-        query$annotation_codons,
-        original_start,
-        start_position,
-        stop_position,
-        in_frame = query$in_frame,
-        is_start = T,
-        annotation_label = query$annotation_label,
-        plot_number = plot_number
+      	sequence,
+      	query$annotation_codons,
+      	query$annotation_label,
+      	plot_number,
+      	original_start,
+      	start_position,
+      	stop_position,
+      	query$in_frame,
+      	is_start = T
       )
     }
 
@@ -808,8 +809,6 @@
   }
 
   annotations <- Filter(Negate(is.null), annotations) |> dplyr::bind_rows()
-
-  plot_levels <- unique(paste0("annotated_plot_", annotations$plot_number))
 
   annotations |>
     dplyr::arrange(genomic_position) |>
@@ -861,12 +860,12 @@
   track_to_plot <- track_to_plot |> drop_na()
   read_names <- read_names[names(read_names) %in% track_to_plot$name]
 
-  track_to_plot$region <- factor(track_to_plot$region, levels = c("ORF", "Region", "Transcript", "Outside of ORF"))
+  track_to_plot$region <- factor(track_to_plot$region, levels = c("ORF", "Region", "Transcript", "Outside\nof ORF"))
 
   read_names[names(read_names)] <- if_else(
     read_names[names(read_names)] == "",
-    "Triplet periodicity",
-    paste(read_names[names(read_names)], "triplet periodicity")
+    "Periodicity",
+    paste(read_names[names(read_names)], "periodicity")
   )
 
   names(plot_colours) <- sub("intron_psite", "Intronic", names(plot_colours))
@@ -892,7 +891,7 @@
       # scale = "free_y",
       labeller = labeller(
         name = function(labels) label_wrap_gen(width = 15)(read_names[labels]),
-        region = label_wrap_gen(width = 15)
+        region = label_wrap_gen(width = 10)
       ),
       switch = "y"
     )
@@ -1105,7 +1104,6 @@
 
     if (is.character(split_exons) & split_exons == "with_introns")
     {
-      print("Adding introns to plot")
       track_to_plot <- track_to_plot |> dplyr::mutate(track_group = feature_number)
 
       # Extract unique region names
@@ -1220,6 +1218,7 @@
   {
     codon_labels <- setNames(unique(codon_queries$annotation_label), unique(codon_queries$name))
     plot_labels <- c(plot_labels, codon_labels)
+    print(plot_labels)
   }
 
   # obtain the tracks to plot
@@ -1263,7 +1262,7 @@
   {
     rest_of_transcript <- track_to_plot |>
       dplyr::filter(!(genomic_position %in% orf_tracks$genomic_position)) |>
-      dplyr::mutate(region = "Outside of ORF")
+      dplyr::mutate(region = "Outside\nof ORF")
 
     combined_tracks <- dplyr::bind_rows(orf_tracks, rest_of_transcript)
   }
