@@ -108,4 +108,3 @@ orf_plot(
 ## TODO:
 
 - Continue work on removal of some unneccesary dependencies (dplyr)
-- Better Kozak integration to enable framing colours for plots consisting of Kozaks
