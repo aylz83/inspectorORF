@@ -88,10 +88,14 @@ faToTwoBit gencode.v44.genome.fasta gencode.v44.genome.2bit
 
 Additionally, coverage of the RNA-Seq data needs to be calculated. This can be performed with [bedtools](https://bedtools.readthedocs.io/en/latest/), using `bedtools coverage`:
 
+
 ```{bash eval = F}
 bedtools coverage -abam sample_alignment.bam -b gencode.v44.annotation.gtf > control_rna_tracks.bed
 gzip control_rna_tracks.bed # optional, but recommended, especially if dealing with large genomes.
 ```
+
+Alternative coverage tools can also be used, as long as the resulting bed files consists of chromosome, start, end, strand and score columns, where each start and end position is incremental, or 
+chromosome, start, end, [ignored], [ignored], strand, position, score where position is incremental. Columns must be in those orders
 
 ***A note if using RiboTaper data - RNA-Seq coverage is performed as part of the RiboTaper pipeline and therefore, the `bedtools coverage` step is not required.***
 
