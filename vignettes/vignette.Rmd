@@ -563,6 +563,9 @@ Annotating such codons is performed by supplying a list of queries with the `cod
 E.G, to label the ORFs start codon and in frame only canonical (AUG) start codons:
 
 ```{r orf_plot_annotate_codons, fig.width = 10, fig.height = 8}
+#| warning: false
+#| message: false
+
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
@@ -601,6 +604,9 @@ inspectorORF::orf_plot(
 Additionally, codons can be coloured based on the frame the codon is found in, by setting "use_framing" as the colour option. Allowing out of frame codons can be useful here too, although in this case, this results in a fairly noisy plot:
 
 ```{r orf_plot_framing_codons, fig.width = 10, fig.height = 8}
+#| warning: false
+#| message: false
+
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
@@ -638,6 +644,9 @@ inspectorORF::orf_plot(
 As can be seen in the plot, there are many AUG start codons within the ORF, consisting of various frames. Such codons can also be plotted within the UTRs, to evaluate potential upstream alternative initiation sites. Or we can evaluate in-frame codons, across the whole transcript:
 
 ```{r orf_plot_framing_codons_tx, fig.width = 10, fig.height = 8}
+#| warning: false
+#| message: false
+
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
@@ -682,6 +691,9 @@ Two observations can be made from this plot. First of all, there are no upstream
 For example, to include in-frame upstream AUG and the near cognate codon CUG:
 
 ```{r orf_plot_annotate_utr_codons, fig.width = 10, fig.height = 8}
+#| warning: false
+#| message: false
+
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
@@ -723,6 +735,9 @@ inspectorORF::orf_plot(
 When annotating codons, stop codons can also be included with `annotate_stop = TRUE`. This can be particularly useful when annotating in-frame start codons across the transcript to indicate alternative ORFs which are possibly translated.
 
 ```{r orf_plot_annotate_stop, fig.width = 10, fig.height = 8}
+#| warning: false
+#| message: false
+
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
@@ -761,6 +776,9 @@ inspectorORF::orf_plot(
 By default, `annotate_stop = TRUE` will search for all three possible stop codons (UAA, UAG and UGA). `annotate_stop` also accepts a character vector to search for specific stop codons instead -
 
 ```{r orf_plot_stop_alt, fig.width = 10, fig.height = 8}
+#| warning: false
+#| message: false
+
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
@@ -801,6 +819,9 @@ Annotated codons can also be plot on their on track facet, which is particularly
 By default, all annotated codons will be within the same track facet titled 'Labelled Codons'
 
 ```{r orf_plot_labelled_codons, fig.width = 10, fig.height = 8}
+#| warning: false
+#| message: false
+
 inspectorORF::orf_plot(
 	tx_tracks,
 	transcript_filter = "ENST00000343702.9",
