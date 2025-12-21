@@ -27,7 +27,7 @@ Install Bioconductor dependencies -
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install(c("S4Vectors", "plyranges", "bioseq", "Biostrings", "GenomicRanges", "rtracklayer"))
+BiocManager::install(c("GenomeInfoDb", "S4Vectors", "plyranges", "bioseq", "Biostrings", "GenomicRanges", "rtracklayer"))
 ```
 
 Install inspectorORF from GitHub:
@@ -39,6 +39,7 @@ devtools::install_github("aylz83/inspectorORF")
 
 ##  Dependencies
 
+ - GenomeInfoDb
  - S4Vectors
  - tibble
  - tidyr
