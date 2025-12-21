@@ -560,6 +560,9 @@ Therefore, additional options are supplied within inspectorORF to annotate the f
 
 Annotating such codons is performed by supplying a list of queries with the `codon_queries` parameter of `inspectorORF::orf_plot`, specifying what codon(s) to plot, their framing, and colour.
 
+**PLEASE NOTE** - Newer versions of ggplot (> 4.0) can cause the generation of some warnings when using `codon_queries` due to a mix of packages inspectorORF uses.
+These are related to faceting dimension calculations and do not impact the final plot.
+ 
 E.G, to label the ORFs start codon and in frame only canonical (AUG) start codons:
 
 ```{r orf_plot_annotate_codons, fig.width = 10, fig.height = 8}
