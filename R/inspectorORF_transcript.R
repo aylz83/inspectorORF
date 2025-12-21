@@ -202,14 +202,14 @@ import_transcript_bed <- function(
 #'   gene_tracks,
 #'   transcript_filter = c("ENST00000343702.9", "ENST00000344911.8")
 #' )
-#' @importFrom plyranges filter
+#' @importFrom dplyr filter
 gene_to_transcript_tracks <- function(
   gene_tracks,
   transcript_filter
 )
 {
   gtf_subset <- gene_tracks@gtf |>
-    plyranges::filter(transcript_id %in% transcript_filter)
+    dplyr::filter(transcript_id %in% transcript_filter)
 
   if (length(gtf_subset) == 0)
   {
