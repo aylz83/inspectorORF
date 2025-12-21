@@ -18,6 +18,16 @@
 #' @importClassesFrom IRanges IRanges
 import_tracks_from_RiboTaper <- function(...)
 {
+  .check_bioc_packages(c(
+    "GenomeInfoDb",
+    "S4Vectors",
+    "plyranges",
+    "bioseq",
+    "Biostrings",
+    "GenomicRanges",
+    "rtracklayer"
+  ))
+
   tracks_data <- list(...)
   tracks_data <- sapply(tracks_data, .read_big_text, simplify = F) |>
     unlist() |>
@@ -136,6 +146,16 @@ merge_RNA_tracks_with_ORFquant <- function(
   orfquant_results_type = "P_sites_all"
 )
 {
+  .check_bioc_packages(c(
+    "GenomeInfoDb",
+    "S4Vectors",
+    "plyranges",
+    "bioseq",
+    "Biostrings",
+    "GenomicRanges",
+    "rtracklayer"
+  ))
+
   tracks <- list(rna_reads = rna_reads)
 
   if (!is.null(rna_abundance))

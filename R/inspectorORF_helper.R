@@ -1,8 +1,99 @@
+.check_bioc_packages <- function(pkgs)
+{
+  missing <- pkgs[!vapply(
+    pkgs,
+    requireNamespace,
+    logical(1),
+    quietly = TRUE
+  )]
+
+  if (length(missing) == 0)
+    return(invisible(TRUE))
+
+  msg <- paste(
+    "The following required Bioconductor packages are not installed:",
+    paste(missing, collapse = ", "),
+    sep = "\n"
+  )
+
+  if (!interactive())
+  {
+    stop(
+      msg,
+      "\n\nPlease install them with:\n",
+      "BiocManager::install(c(",
+      paste(sprintf('"%s"', missing), collapse = ", "),
+      "))"
+    )
+  }
+
+  if (!requireNamespace("BiocManager", quietly = TRUE))
+  {
+    utils::install.packages("BiocManager")
+  }
+
+  answer <- utils::menu(
+    c("Yes", "No"),
+    title = paste0(msg, "\n\nInstall now?")
+  )
+
+  if (answer != 1)
+  {
+    stop("Cannot continue without required Bioconductor packages.")
+  }
+
+  BiocManager::install(missing, ask = FALSE, update = FALSE)
+
+  still_missing <- missing[!vapply(
+    missing,
+    requireNamespace,
+    logical(1),
+    quietly = TRUE
+  )]
+
+  if (length(still_missing) > 0)
+  {
+    stop(
+      "Installation failed for the following packages:\n",
+      paste(still_missing, collapse = ", ")
+    )
+  }
+
+  invisible(TRUE)
+}
+
 .check_files_exist <- function(files, label)
 {
   if (any(grepl("\\.bed\\.gz$", files)) && !requireNamespace("R.utils", quietly = TRUE))
   {
-    stop("R.utils is required for opening gzip compressed bed files.")
+    if (interactive())
+    {
+      answer <- utils::menu(
+        c("Yes", "No"),
+        title = "Package 'R.utils' is required to read gzip-compressed BED files.\nInstall it now?"
+      )
+
+      if (answer == 1)
+      {
+        utils::install.packages("R.utils")
+
+        if (!requireNamespace("R.utils", quietly = TRUE))
+        {
+          stop("Installation of 'R.utils' failed.")
+        }
+      }
+      else
+      {
+        stop("Cannot continue without 'R.utils'.")
+      }
+    }
+    else
+    {
+      stop(
+        "R.utils is required for opening gzip-compressed BED files.\n",
+        "Please install it with install.packages('R.utils')."
+      )
+    }
   }
 
   missing_files <- files[!file.exists(files)]

@@ -8,7 +8,8 @@ Description: Utilises output from either ORFquant or RiboTaper, along with addit
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-Suggests: 
+Suggests:
+    BiocManager,
     testthat (>= 3.0.0),
     DT,
     knitr,
@@ -16,6 +17,8 @@ Suggests:
     tidyverse,
     R.utils
 Config/testthat/edition: 3
+Depends:
+    R (>= 4.1.0)
 Imports:
     S4Vectors,
     tibble,
@@ -37,6 +40,7 @@ Imports:
     stats,
     grid
 Config/BiocViews:
+    GenomeInfoDb,
     GenomicRanges,
     plyranges,
     bioseq,
